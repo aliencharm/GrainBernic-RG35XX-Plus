@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Independent V4 experimental controller. Does not import GrainBrick or write V3 files."""
 import json
+import math
+import tempfile
 import os
 from pathlib import Path
 import platform
@@ -12,6 +14,67 @@ PARAMS = [('mix', 'Wet mix', 0., 1., .05), ('gain', 'Output gain', 0., 1., .05),
           ('grain', 'Grain ms', 10., 250., 10.), ('delay', 'History delay ms', 10., 1000., 10.),
           ('pitch', 'Pitch ratio', .5, 2., .05), ('scatter', 'Scatter ms', 0., 100., 5.)]
 DEFAULTS = {'mix': 0., 'gain': .5, 'grain': 20., 'delay': 10., 'pitch': 1., 'scatter': 0.}
+PERSISTED_KEYS = ('grain', 'delay', 'pitch', 'scatter')
+
+
+def persistent_values(params):
+    return {key:params[key] for key in PERSISTED_KEYS}
+
+
+def load_settings():
+    # Wet mix and gain are deliberately excluded from persisted startup state.
+    params=DEFAULTS.copy()
+    path=ROOT / 'live-settings.json'
+    try:
+        if path.stat().st_size > 16384:
+            raise ValueError('settings file is too large')
+        data=json.loads(path.read_text(encoding='utf-8'))
+        if not isinstance(data,dict) or type(data.get('version')) is not int or data['version']!=1 or not isinstance(data.get('parameters'),dict):
+            raise ValueError('unsupported settings format')
+        limits={key:(lo,hi) for key,_,lo,hi,_ in PARAMS}
+        for key in PERSISTED_KEYS:
+            value=data['parameters'].get(key)
+            lo,hi=limits[key]
+            if type(value) in (int,float) and lo<=value<=hi and math.isfinite(value):
+                params[key]=float(value)
+            elif value is not None:
+                print('V4 SETTINGS IGNORED invalid value for',key,flush=True)
+        print('V4 SETTINGS LOADED:',persistent_values(params),flush=True)
+    except FileNotFoundError:
+        pass
+    except (OSError,ValueError) as exc:
+        print('V4 SETTINGS LOAD FAILED:',str(exc),flush=True)
+    return params
+
+
+def save_settings(params):
+    values=persistent_values(params)
+    limits={key:(lo,hi) for key,_,lo,hi,_ in PARAMS}
+    for key,value in values.items():
+        lo,hi=limits[key]
+        if type(value) not in (int,float) or not lo<=value<=hi or not math.isfinite(value):
+            raise ValueError('invalid setting: '+key)
+    text=json.dumps({'version':1,'parameters':values},indent=2,allow_nan=False)+'\n'
+    fd,name=tempfile.mkstemp(prefix='.live-settings-',suffix='.tmp',dir=ROOT)
+    temporary=Path(name)
+    try:
+        with os.fdopen(fd,'w',encoding='utf-8') as handle:
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary,ROOT / 'live-settings.json')
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def start_values(params):
+    # Preserve tone controls selected before A, but start dry at half gain.
+    return {**params,'mix':DEFAULTS['mix'],'gain':DEFAULTS['gain']}
+
+
+def send_start_settings(child,params):
+    child.stdin.write(''.join(f'{key} {params[key]}\n' for key in PERSISTED_KEYS))
+    child.stdin.flush()
 
 
 def candidates(asound=Path('/proc/asound')):
@@ -142,7 +205,8 @@ def _run(renderer_factory):
     mapping = load_mapping()
     calibration = ['A','B','START','UP','DOWN','LEFT','RIGHT'] if mapping is None and joys else []
     new_map = {'version':1,'buttons':{},'dpad_buttons':{}}
-    params = DEFAULTS.copy()
+    params = load_settings()
+    saved_params = persistent_values(params)
     selected = 0
     child = None
     log = None
@@ -156,7 +220,7 @@ def _run(renderer_factory):
     log_offset = 0
 
     def stop_audio():
-        nonlocal child, log, log_read, status, latest
+        nonlocal child, log, log_read, status, latest, saved_params
         if child:
             if child.poll() is None:
                 try:
@@ -168,7 +232,10 @@ def _run(renderer_factory):
                         child.wait(timeout=2)
                     except subprocess.TimeoutExpired:
                         child.kill(); child.wait()
-            child.stdin.close()
+            try:
+                child.stdin.close()
+            except OSError:
+                pass
             child = None
         if log:
             log.close(); log = None
@@ -176,6 +243,16 @@ def _run(renderer_factory):
             log_read.close(); log_read = None
         status = 'Stopped. A starts dry monitoring.'
         latest = ''
+        current = persistent_values(params)
+        if current != saved_params:
+            try:
+                save_settings(params)
+                saved_params = current
+                status = 'Settings saved. A starts dry monitoring.'
+                print('V4 SETTINGS SAVED:',current,flush=True)
+            except (OSError,ValueError) as exc:
+                status = 'Stopped; settings could not be saved'
+                print('V4 SETTINGS SAVE FAILED:',str(exc),flush=True)
 
     try:
         while running:
@@ -243,7 +320,8 @@ def _run(renderer_factory):
                         log_offset = log_read.tell()
                         child = subprocess.Popen([str(ROOT/'v4-live'),cap,play,str(latency)],
                                                  stdin=subprocess.PIPE,stdout=log,stderr=log,text=True)
-                        params = DEFAULTS.copy()  # Every start defaults to dry and half gain.
+                        params = start_values(params)
+                        send_start_settings(child,params)
                         status = 'Starting audio...'
                         latest = ''
                     except (OSError,ValueError) as exc:

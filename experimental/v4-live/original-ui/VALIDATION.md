@@ -1,4 +1,4 @@
-# Original UI LIVE 0.1 validation
+# Original UI LIVE 0.2 validation
 
 The user's probe 0.3 established on the actual RG35XX Plus:
 
@@ -50,3 +50,31 @@ To rerun host checks from experimental/v4-live after `make` (Pygame required):
 V4_TEST_ENGINE=build/v4-live python3 -B original-ui/test_native_ui.py
 python3 -B original-ui/test_live_screen.py build/v4-live
 ```
+
+
+## 0.2 settings persistence
+
+Previous LIVE UI 0.1 hardware report: original renderer initialized with Mali
+and correct scaling; about 58 seconds of audio with zero recoveries and a
+clean exit, with wet/pitch/scatter changes in engine stats. User confirmed
+B stops audio and START exits. That establishes the previous graphical/audio
+baseline; the new save/restore behavior still needs its quick device check.
+
+New tests passed:
+
+- Seven settings tests: absent-file defaults; round trip excluding wet/gain;
+  per-field validation including booleans, nonfinite values and huge integers;
+  malformed/unknown-schema reads leave the file unchanged; failed atomic
+  replacement preserves old data and removes the temporary file; invalid
+  saves rejected; A retains tone controls while resetting wet/gain and queues
+  correct engine commands.
+- Full two-launch test with the real host engine and ALSA null: pre-A changes
+  reach engine stats, settings are not written while streaming, B saves the
+  four fields, relaunch restores them, A resets manually raised wet/gain,
+  and START exits cleanly while audio is active.
+- Native-loader fixture verifies atomic preference saving/loading under the
+  installed audit policy while original V3 writes remain blocked.
+- Existing six native policy/startup tests, four frontend tests, classic UI
+  smoke and six-knob LIVE screen smoke pass with the new settings code.
+
+The native audio engine and its DSP are unchanged; no rebuild was needed.

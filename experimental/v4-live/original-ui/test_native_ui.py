@@ -51,7 +51,13 @@ except RuntimeError: pass
 import subprocess
 r=subprocess.run([str(engine),'--version'],capture_output=True,text=True)
 assert r.returncode==0
-print('PASS loaded modules, V3 protected, mixer blocked, only own audio child started')
+import importlib.util
+spec=importlib.util.spec_from_file_location('prefs_under_guard',Path(sys.argv[1]).parent/'package/grainbrick-v4-live/frontend.py')
+f=importlib.util.module_from_spec(spec);spec.loader.exec_module(f)
+f.ROOT=v3.parent
+f.save_settings({**f.DEFAULTS,'pitch':.75})
+assert f.load_settings()['pitch']==.75
+print('PASS loaded modules, V3 protected, mixer blocked, own child and atomic settings writes allowed')
 """
    r=subprocess.run([sys.executable,'-B','-c',code,str(MODULE.parent),str(v3),str(ENGINE)],capture_output=True,text=True,cwd=d,timeout=10)
    self.assertEqual(r.returncode,0,r.stdout+r.stderr)

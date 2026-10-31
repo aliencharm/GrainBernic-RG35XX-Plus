@@ -174,7 +174,7 @@ class NativeRenderer:
         text='PEAK '+stats.get('peak','--')+'  /  XRUN '+stats.get('recoveries','0')+'  /  DSP '+stats.get('dsp_max_ms','--')+' MS'
         self.ui.text(text,36,646,2,(144,156,151))
         self.ui.text('D-PAD SELECT / CHANGE   A START   B STOP',36,702,2,(206,211,206))
-        self.ui.text('START EXIT / LIVE ONLY / ENGINE 0.1.1',36,736,2,(144,156,151))
+        self.ui.text('START EXIT / LIVE UI 0.2 / ENGINE 0.1.1',36,736,2,(144,156,151))
     def close(self):
         # UIEngine.close saves original settings. This frontend deliberately
         # delegates device cleanup to pygame.quit and does not call that method.

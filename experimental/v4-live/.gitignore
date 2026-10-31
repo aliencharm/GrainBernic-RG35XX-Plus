@@ -5,3 +5,5 @@ package/grainbrick-v4-live/*.log
 package/grainbrick-v4-live/buttons.json
 package/grainbrick-v4-live/config.json
 package/grainbrick-v4-live/.lock
+package/grainbrick-v4-live/live-settings.json
+package/grainbrick-v4-live/.live-settings-*.tmp
