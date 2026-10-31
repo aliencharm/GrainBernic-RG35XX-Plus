@@ -10,6 +10,7 @@ class LiveController:
         self.main=main;self.config=config;self.mode='REC';self.message=''
         self.capture_factory=capture_factory or (lambda:ArecordCapture(self.config['capture'],latency_us=self.config.get('latency_us',24000)))
         self.initialized=False;self.sources=weakref.WeakSet()
+        self.record_monitor=None;self.record_worker=None
     def bus(self):return self.main.params
     def active(self):return self.bus().get('live.enabled')>=.5
     def source(self):
@@ -58,6 +59,7 @@ class LiveController:
     def prepare_runtime(self):
         if self.initialized:return
         self.initialized=True
+        self.install_record_monitor()
         # Original state restoration may include our keys, but never auto-arm LIVE.
         for key in ('live.enabled','live.freeze','live.mix'):self.bus().set(key,0)
         original=self.main.handle_record_action
@@ -97,6 +99,44 @@ class LiveController:
                     return True
             return original(action,value)
         self.main.handle_record_action=handle
+    def stop_record_monitor(self):
+        if self.record_monitor is not None:
+            self.record_monitor.stop();self.record_monitor=None
+    def restore_record_worker(self):
+        worker=self.record_worker;self.record_worker=None
+        if worker is not None and worker is getattr(self.main,'audio_worker',None) and not worker.running:
+            worker.start()
+    def install_record_monitor(self):
+        original_start=self.main.start_input_recording
+        def start():
+            self.stop_record_monitor()
+            worker=getattr(self.main,'audio_worker',None)
+            self.record_worker=worker if worker is not None and worker.running else None
+            if self.record_worker is not None:self.record_worker.stop()
+            try:
+                result=original_start()
+                if self.main.record_mode=='recording':
+                    try:
+                        from record_monitor import RecordingMonitor
+                        path=self.main.recorder.current_path
+                        if callable(path):path=path()
+                        self.record_monitor=RecordingMonitor(path,self.config['playback'])
+                        self.record_monitor.start()
+                    except Exception as exc:
+                        print('REC MONITOR SETUP FAILED:',str(exc),'(original recording continues)',flush=True)
+                else:self.restore_record_worker()
+                return result
+            except Exception:
+                self.stop_record_monitor();self.restore_record_worker();raise
+        self.main.start_input_recording=start
+        def ending(original):
+            def finish(*args,**kwargs):
+                self.stop_record_monitor()
+                try:return original(*args,**kwargs)
+                finally:self.restore_record_worker()
+            return finish
+        for name in ('stop_input_recording_to_editor','cancel_input_recording'):
+            setattr(self.main,name,ending(getattr(self.main,name)))
     def before_input(self):
         self.prepare_runtime()
         if self.active() and self.main.controls.current_tab=='SAMPLE':self.main.record_mode='ready'
@@ -192,6 +232,10 @@ def install_at_boot(main,config,capture_factory=None,shared_storage=True):
         elif getattr(self,'_v4_display_source',None) is not None:
             self.set_sample(getattr(main,'sample',None));self._v4_display_source=None
         result=original_draw(self,*args,**kwargs)
+        if args[0].current_tab=='SAMPLE' and getattr(main,'record_mode',None)=='recording':
+            monitor=controller.record_monitor
+            status=monitor.status if monitor is not None else 'OFF'
+            self.text('REC MONITOR '+status+' / DRY 50%',42,662,2,self.ACCENT)
         if args[0].current_tab=='SAMPLE' and getattr(main,'record_mode',None)=='edit' and not getattr(self,'info_mode',False):
             import pygame
             pygame.draw.rect(self.screen,self.screen.get_at((0,200))[:3],(36,695,955,24))

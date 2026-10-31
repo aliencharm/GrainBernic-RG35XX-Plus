@@ -1,4 +1,4 @@
-# GrainBrick V4 Integrated 0.1.1 — experimental hardware-test build
+# GrainBrick V4 Integrated 0.1.2 — experimental hardware-test build
 
 Continuous USB input routed through the ORIGINAL beta 1.0 GranularEngine and DSPChain, running the original application and tabs. This is separate from the previous standalone V4 / Original UI LIVE frontend. It is not yet validated on the RG35XX Plus with real USB audio.
 
@@ -6,7 +6,7 @@ Continuous USB input routed through the ORIGINAL beta 1.0 GranularEngine and DSP
 
 Requires the working V3 in `/userdata/roms/ports/grainbrick-beta/` and the working V4 device configuration in `/userdata/roms/ports/grainbrick-v4-live/config.json`.
 
-Extract this ZIP into `/userdata/roms/ports/`, merging its `grainbrick-v4-live` folder with the existing folder. It adds three Python files and a new launcher; it contains no configuration or preference files to overwrite. Launch **GrainBrick V4 Integrated**. Close V3 and other V4 launchers first.
+Extract this ZIP into `/userdata/roms/ports/`, merging its `grainbrick-v4-live` folder with the existing folder. It adds four Python files and a new launcher; it contains no configuration or preference files to overwrite. Launch **GrainBrick V4 Integrated**. Close V3 and other V4 launchers first.
 
 First launch copies the installed original application into `grainbrick-v4-integrated/`; allow extra startup time. The V3 directory stays unchanged. Original binaries are checked against the inspected beta main SHA-256. User recordings, samples and projects are not copied. The integrated copy has its own recordings, samples, projects and saved DSP state. No proprietary original binaries are distributed in this ZIP.
 
@@ -22,6 +22,14 @@ First launch copies the installed original application into `grainbrick-v4-integ
 Suggested first granular test: size 20–60 ms, pitch 0 semitones, position centered, spray 0. Larger grains add audible wet delay. Live position is relative to the advancing write position; centered follows recent input. Spray scales with available history while the buffer fills. Freeze holds 16 seconds of RAM history; it does not save a WAV.
 
 The live dry/granular mix feeds the original downstream DSP chain, so downstream FX affect the mix. This is not an effects bypass. Original file-mode granular behavior is retained. Existing standalone V4 settings are not imported into the original DSP controls.
+
+## REC software monitoring (0.1.2)
+
+Original REC mode now automatically plays a dry monitor of incoming recorded audio to the configured V4 playback device. Keep Tascam direct monitoring OFF. The monitor uses the same WAV the original recorder is writing; it does not open a second capture device or alter saved samples. The recording page shows `REC MONITOR ON / DRY 50%` when the monitor process has started. Gain is fixed at 50% for this test build; this is separate from LIVE wet mix. Original sample playback is stopped while REC owns the output, and its worker is restored after stop/cancel.
+
+Monitoring follows file writes, so latency depends on arecord buffering, USB and playback. It does not process recorded input through LIVE granular/FX; use LIVE mode for that. Monitor failure is logged and leaves the original recording running. Stop/cancel and app cleanup close the monitor. Any pending output is discarded at stop rather than delaying recording edit/preview.
+
+Test: choose REC, begin recording with direct monitoring off, check input is audible while the recording timer runs, then stop and preview the saved result. Also test cancel and a second recording. Send `v4-integrated.log` if monitoring is silent or delayed; look for `REC MONITOR START/FAILED/END` lines. 18 host tests passed including monitoring a growing WAV without modifying it, gain, error isolation, recording stop/cancel and output ownership. Original main regression checks ran under ARM emulation. Real handheld REC monitoring is not yet tested.
 
 ## Recording denoise controls (0.1.1)
 
