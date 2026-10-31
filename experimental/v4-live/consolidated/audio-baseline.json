@@ -1,0 +1,10 @@
+{
+  "baseline": "Integrated 0.1.8 (0.1.7 audio plus freeze hint)",
+  "commit": "5194b8a3b58153ea9893836d3e340e6835949c5d",
+  "files": {
+    "original_adapter.py": "789335878a5f6928c2e0855d2768a3b43eca8fc7d509ff9d69b9f082b6de7cc7",
+    "live_source.py": "afe303435e89122a3292d94b42754a2cfa357babab8a567401c17fb637ed466e",
+    "stage_mix.py": "73dcd2b3b309d85e4772f69e9a20825eecc815d968e94250d73cfffebc8dae14",
+    "record_monitor.py": "8f362d7ac065e1cd7b63d573a997237d89b1efcc1c065b4ba88f2cf4710af7f3"
+  }
+}

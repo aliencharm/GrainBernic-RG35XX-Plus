@@ -14,6 +14,7 @@ app=Path(sys.argv[1]).resolve()
 os.environ['GRAINBRICK_ROOT']=str(app)
 sys.path.insert(0,str(app))
 integrated='--integrated' in sys.argv
+final_entry='--final-entry' in sys.argv
 controller=None
 state={'installed':False,'frames':0,'worker_constructed':0,'worker_started':0,'worker_stopped':0,'record_overlay_calls':0,'record_start_delegated':0}
 report={}
@@ -69,8 +70,12 @@ def install():
         class Capture:
             def read(self,n):return np.zeros((n,2),np.float32)
             def close(self):pass
-        controller=install_at_boot(main,{'capture':'synthetic','playback':'default'},Capture,shared_storage=True)
+        if not final_entry:
+            controller=install_at_boot(main,{'capture':'synthetic','playback':'default'},Capture,shared_storage=True)
     ui_cls=renderer.UIEngine
+    if final_entry:
+        def refresh(self):self._audio_outputs=[('USB_TEST','Mock Tascam','plughw:CARD=Series,DEV=0')]
+        ui_cls.refresh_audio_outputs=refresh
     original_draw=ui_cls.draw
     original_ready=ui_cls.draw_record_ready_page
     def ready(self):
@@ -79,8 +84,10 @@ def install():
         if not integrated:self.text('REC / LIVE SWITCH TEST',570,120,2,(220,150,60))
     ui_cls.draw_record_ready_page=ready
     def draw(self,*args,**kwargs):
+        global controller
         state['frames']+=1
         main=sys.modules['main']
+        if final_entry:controller=main._v4_controller
         if state['frames']==1:
             report['original_main_functions']=[k for k,v in vars(main).items() if callable(v) and getattr(v,'__module__',None)=='main']
             report['record_globals']={k:v if isinstance(v,(str,int,float,bool,type(None))) else type(v).__name__ for k,v in vars(main).items() if 'record' in k}
@@ -133,7 +140,11 @@ def audit(event,args):
 sys.addaudithook(audit)
 signal.alarm(35)
 try:
-    importlib.import_module('main')
+    if final_entry:
+        import runpy
+        os.chdir(app)
+        runpy.run_path(str(app/'v4_entry.py'),run_name='__main__')
+    else:importlib.import_module('main')
 finally:
     signal.alarm(0)
     report['state']=state
