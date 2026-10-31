@@ -1,4 +1,4 @@
-# GrainBrick V4 Integrated 0.1.6 — experimental hardware-test build
+# GrainBrick V4 Integrated 0.1.7 — experimental hardware-test build
 
 Continuous USB input routed through the ORIGINAL beta 1.0 GranularEngine and DSPChain, running the original application and tabs. This is separate from the previous standalone V4 / Original UI LIVE frontend. It is not yet validated on the RG35XX Plus with real USB audio.
 
@@ -22,6 +22,10 @@ First launch copies the installed original application into `grainbrick-v4-integ
 Suggested first granular test: size 20–60 ms, pitch 0 semitones, position centered, spray 0. Larger grains add audible wet delay. Live position is relative to the advancing write position; centered follows recent input. Spray scales with available history while the buffer fills. Freeze holds 16 seconds of RAM history; it does not save a WAV.
 
 The raw/granular blend feeds the original downstream DSP chain. The new FX and Tape mixes blend around their respective original stages; EQ, compression and ORBIX retain their existing controls. Original file-mode granular behavior is retained. Existing standalone V4 settings are not imported into the original DSP controls.
+
+## SAMPLE/LIVE tab label (0.1.7)
+
+The visible SAMPLE header is now SAMPLE/LIVE. It uses the original small font to fit in the existing tab slot. Only the displayed label changes; tab routing and sample browsing retain the original SAMPLE identifier. The original main/UI regression check passed under ARM emulation. No audio processing changes from 0.1.6.
 
 ## Three original-style mix knobs (0.1.6)
 

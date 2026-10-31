@@ -265,6 +265,20 @@ def install_at_boot(main,config,capture_factory=None,shared_storage=True):
         return controller.filter_record_actions(original_poll(self,*args,**kwargs))
     input_cls.poll=poll
     ui_cls=sys.modules['ui.renderer'].UIEngine
+    original_text=ui_cls.text
+    def text(self,value,*args,**kwargs):
+        if getattr(self,'_v4_drawing_tabs',False) and value=='SAMPLE' and len(args)>=3:
+            # Keep the original tab positions and internal SAMPLE identifier.
+            # The longer visible label fits its slot using the native small font.
+            args=list(args);args[1]+=4;args[2]=2;value='SAMPLE/LIVE'
+        return original_text(self,value,*args,**kwargs)
+    ui_cls.text=text
+    original_tabs=ui_cls.draw_tabs
+    def draw_tabs(self,controls):
+        self._v4_drawing_tabs=True
+        try:return original_tabs(self,controls)
+        finally:self._v4_drawing_tabs=False
+    ui_cls.draw_tabs=draw_tabs
     original_ready=ui_cls.draw_record_ready_page
     ui_cls.draw_record_ready_page=lambda self:controller.draw_ready(self,original_ready)
     original_draw=ui_cls.draw
