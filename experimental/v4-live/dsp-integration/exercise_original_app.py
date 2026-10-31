@@ -84,6 +84,20 @@ def install():
         if state['frames']==1:
             report['original_main_functions']=[k for k,v in vars(main).items() if callable(v) and getattr(v,'__module__',None)=='main']
             report['record_globals']={k:v if isinstance(v,(str,int,float,bool,type(None))) else type(v).__name__ for k,v in vars(main).items() if 'record' in k}
+            report['denoise_api']={name:list(getattr(main,name).__code__.co_varnames[:getattr(main,name).__code__.co_argcount]) for name in ('record_denoise_available','change_record_denoise')}
+            report['button_bindings']={k:str(v) for k,v in vars(main.input_manager.button_mapping).items()}
+            report['denoise_available_initial']=main.record_denoise_available()
+            saved={key:getattr(main,key) for key in ('record_editor','record_denoise_path','record_denoise_strong_path','record_mode')}
+            probe=app/'denoise-availability-fixture';probe.write_bytes(b'fixture')
+            try:
+                main.record_mode='edit';main.record_denoise_path=str(probe);main.record_denoise_strong_path=str(probe)
+                report['denoise_availability_probe']={}
+                for channels in (1,2):
+                    main.record_editor=types.SimpleNamespace(channels=channels)
+                    report['denoise_availability_probe'][str(channels)]=main.record_denoise_available()
+            finally:
+                for key,value in saved.items():setattr(main,key,value)
+                probe.unlink()
             action=main.handle_record_action
             report['handle_record_action_arguments']=list(action.__code__.co_varnames[:action.__code__.co_argcount])
             browser=getattr(main,'sample_browser',None)

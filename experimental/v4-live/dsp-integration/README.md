@@ -1,4 +1,4 @@
-# GrainBrick V4 Integrated 0.1 — experimental hardware-test build
+# GrainBrick V4 Integrated 0.1.1 — experimental hardware-test build
 
 Continuous USB input routed through the ORIGINAL beta 1.0 GranularEngine and DSPChain, running the original application and tabs. This is separate from the previous standalone V4 / Original UI LIVE frontend. It is not yet validated on the RG35XX Plus with real USB audio.
 
@@ -22,6 +22,12 @@ First launch copies the installed original application into `grainbrick-v4-integ
 Suggested first granular test: size 20–60 ms, pitch 0 semitones, position centered, spray 0. Larger grains add audible wet delay. Live position is relative to the advancing write position; centered follows recent input. Spray scales with available history while the buffer fills. Freeze holds 16 seconds of RAM history; it does not save a WAV.
 
 The live dry/granular mix feeds the original downstream DSP chain, so downstream FX affect the mix. This is not an effects bypass. Original file-mode granular behavior is retained. Existing standalone V4 settings are not imported into the original DSP controls.
+
+## Recording denoise controls (0.1.1)
+
+On the recorded-sample edit page, L2 decreases and R2 increases the ORIGINAL denoise percentage by 5 points per press. Existing Y + directional controls are retained. This mapping does not add denoise to live mode. The original denoise availability check is respected; unavailable recordings show an explicit message. The original library includes a built-in-microphone mono denoiser, so this update does not promise denoise support for stereo USB recordings.
+
+Four additional tests passed for button delegation, unavailable recordings, release handling and keeping other tabs/live controls unchanged. Real original main/UI regression tests passed again under ARM emulation. Handheld button mapping and actual denoise processing still require testing.
 
 ## Send back
 

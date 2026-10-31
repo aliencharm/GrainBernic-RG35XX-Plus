@@ -100,6 +100,21 @@ class LiveController:
     def before_input(self):
         self.prepare_runtime()
         if self.active() and self.main.controls.current_tab=='SAMPLE':self.main.record_mode='ready'
+    def filter_record_actions(self,actions):
+        if self.main.controls.current_tab!='SAMPLE' or self.main.record_mode!='edit':return actions
+        remaining=[]
+        for action,value in actions:
+            if action not in ('L2','R2'):
+                remaining.append((action,value));continue
+            if value==0:continue
+            if not self.main.record_denoise_available():
+                self.message='DENOISE UNAVAILABLE FOR THIS RECORDING'
+                print('REC DENOISE UNAVAILABLE',flush=True)
+                continue
+            self.main.change_record_denoise(-5 if action=='L2' else 5)
+            self.message='DENOISE '+str(self.main.record_denoise_percent)+'%'
+            print('REC DENOISE:',self.main.record_denoise_percent,flush=True)
+        return remaining
     def draw_ready(self,ui,original):
         original(ui)
         ui.text('X  REC / LIVE',650,120,2,ui.ACCENT)
@@ -154,7 +169,7 @@ def install_at_boot(main,config,capture_factory=None,shared_storage=True):
     original_poll=input_cls.poll
     def poll(self,*args,**kwargs):
         controller.before_input()
-        return original_poll(self,*args,**kwargs)
+        return controller.filter_record_actions(original_poll(self,*args,**kwargs))
     input_cls.poll=poll
     ui_cls=sys.modules['ui.renderer'].UIEngine
     original_ready=ui_cls.draw_record_ready_page
@@ -177,6 +192,11 @@ def install_at_boot(main,config,capture_factory=None,shared_storage=True):
         elif getattr(self,'_v4_display_source',None) is not None:
             self.set_sample(getattr(main,'sample',None));self._v4_display_source=None
         result=original_draw(self,*args,**kwargs)
+        if args[0].current_tab=='SAMPLE' and getattr(main,'record_mode',None)=='edit' and not getattr(self,'info_mode',False):
+            import pygame
+            pygame.draw.rect(self.screen,self.screen.get_at((0,200))[:3],(36,695,955,24))
+            hint='L2 / R2 DENOISE - / +' if main.record_denoise_available() else 'DENOISE UNAVAILABLE FOR THIS RECORDING'
+            self.text(hint,38,695,2,self.ACCENT)
         if controller.mode=='LIVE' and args[0].current_tab=='SAMPLE' and self.record_mode=='ready' and not getattr(self,'info_mode',False):
             controller.draw_live_footer(self)
         return result
