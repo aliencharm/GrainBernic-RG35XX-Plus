@@ -72,3 +72,20 @@ setter dispatch, and original UI constructor/tabs/placeholder rendering into
 a dummy display. No audio worker is instantiated. A failure is recorded per
 check, and modified methods are restored. It does not yet implement a LIVE
 tab or establish safe handover of the USB PCM from the original audio worker.
+
+
+## 0.2 handheld report and correction
+
+Report 0.2 captured all modules but ended with `probe_failed` / `dummy not
+available` before compatibility checks were assigned to the report. It did
+not establish a failed renderer or failed class replacement: those checks
+never completed. This was a probe assumption about SDL build capabilities.
+
+Probe 0.3 always runs parameter dispatch and renderer alias replacement
+checks first. Graphics setup is separate: try dummy, then the normal
+inherited/default video driver with the installed display-fit adapter.
+Only display/font calls are restored; global init, mixer init, joystick
+init, process spawning and path-write guards remain blocked. If video is
+unavailable, graphics is skipped while class results remain available.
+No audio-engine or V3 application startup was added. Eleven host fixture
+tests passed, including missing-dummy fallback and graphics failure isolation.

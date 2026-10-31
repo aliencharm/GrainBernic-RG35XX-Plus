@@ -2,6 +2,7 @@
 """Guarded metadata probe, not a V3 launcher or an audio/UI integration patch."""
 import argparse
 import importlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -95,7 +96,7 @@ def install_guard(snapshot):
     return stop
 
 
-def compatibility_checks(modules, pg=None):
+def compatibility_checks(modules, pg=None, graphics_only=False):
     results={}
     def check(name, task):
         try:
@@ -124,7 +125,8 @@ def compatibility_checks(modules, pg=None):
                     'scope':'ParameterBus -> Parameter compiled call path only'}
         finally:
             cls.set=original
-    check('parameter_method_dispatch',parameter_dispatch)
+    if not graphics_only:
+        check('parameter_method_dispatch',parameter_dispatch)
     def class_mutation():
         cls=renderer.UIEngine
         if main_module is None or main_module.UIEngine is not cls:
@@ -141,11 +143,10 @@ def compatibility_checks(modules, pg=None):
                     'scope':'Python alias dispatch; full main event-loop dispatch still unverified'}
         finally:
             cls.draw=original
-    check('renderer_class_replacement',class_mutation)
+    if not graphics_only:
+        check('renderer_class_replacement',class_mutation)
     if pg is not None:
         def render_preview():
-            if pg.display.get_driver()!='dummy':
-                raise RuntimeError('Off-screen renderer test requires the dummy video driver')
             parameters=parameter_module.create_default_parameters()
             controls=modules['engine.control'].ControlManager(parameters)
             cls=renderer.UIEngine
@@ -160,21 +161,64 @@ def compatibility_checks(modules, pg=None):
                 import io,base64
                 buf=io.BytesIO()
                 pg.image.save(ui.screen,buf,'preview.png')
-                return {'size':list(ui.screen.get_size()),
+                return {'size':list(ui.screen.get_size()),'video_driver':pg.display.get_driver(),
                         'tab':simple(controls.current_tab),
                         'scope':'Original renderer constructor, tabs and placeholder only; no audio',
                         'png_base64':base64.b64encode(buf.getvalue()).decode('ascii')}
             finally:
                 cls.refresh_audio_outputs=old_refresh
-        check('offscreen_original_renderer',render_preview)
+        check('original_renderer_preview',render_preview)
+    return results
+
+
+def run_compatibility_stage(modules, pg, v3, inherited_video=None):
+    # These checks run regardless of graphics backend availability.
+    results=compatibility_checks(modules)
+    if pg is None:
+        return results
+    attempts=[]
+    ready=False
+    for choice in ('dummy',inherited_video if inherited_video!='dummy' else None):
+        if choice:
+            os.environ['SDL_VIDEODRIVER']=choice
+        else:
+            os.environ.pop('SDL_VIDEODRIVER',None)
+        try:
+            pg.display.init()
+            driver=pg.display.get_driver()
+            if driver!='dummy':
+                adapter_path=v3/'gb_display_fit.py'
+                if not adapter_path.is_file():
+                    raise RuntimeError('Working V3 display adapter is required for native preview')
+                os.environ.update(GRAINBRICK_SCREEN='640x480',GRAINBRICK_SCALE='fast',GRAINBRICK_FIT='1')
+                spec=importlib.util.spec_from_file_location('v3_preview_display_fit',adapter_path)
+                adapter=importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(adapter)
+                adapter.install()
+            pg.font.init()
+            attempts.append({'requested':choice or 'platform default','status':'passed','driver':driver})
+            ready=True
+            break
+        except BaseException as exc:
+            attempts.append({'requested':choice or 'platform default','status':'failed','error':type(exc).__name__+': '+str(exc)})
+            try:
+                pg.display.quit()
+            except BaseException:
+                pass
+    results['graphics_setup']={'status':'passed' if ready else 'failed','attempts':attempts}
+    if ready:
+        results.update(compatibility_checks(modules,pg,graphics_only=True))
+    else:
+        results['original_renderer_preview']={'status':'skipped','reason':'No usable video backend; class checks are reported independently'}
     return results
 
 
 def worker(v3,report_fd,fixture=False):
     # Parent opens the output file first. The guard blocks subsequent path writes.
-    report={'probe_version':'0.2','python':platform.python_version(),'machine':platform.machine(),
+    report={'probe_version':'0.3','python':platform.python_version(),'machine':platform.machine(),
             'v3_directory':str(v3),'status':'initializing','modules':{},'boundary':None}
     snapshot={}
+    inherited_video=os.environ.get('SDL_VIDEODRIVER')
     try:
         if not fixture:
             if sys.version_info[:2]!=(3,12) or platform.machine().lower() not in ('aarch64','arm64'):
@@ -225,20 +269,19 @@ def worker(v3,report_fd,fixture=False):
             if module is not None:
                 report['modules'][name]=module_info(module)
         report['missing_modules']=[name for name in TARGETS if name not in report['modules']]
-        # Restore Pygame calls only with dummy backends for an isolated off-screen
-        # constructor/drawing check. File/process/audio-library guards stay active.
+        # Restore display calls only. Global/mixer/joystick init stays blocked,
+        # and file/process/audio-library guards remain active.
         if not fixture:
             for owner,name,original in originals:
-                setattr(owner,name,original)
-            pygame.display.init()
-            pygame.font.init()
+                if owner is pygame.display:
+                    setattr(owner,name,original)
         try:
             available={name:collected.get(name) or sys.modules.get(name) for name in TARGETS}
-            report['compatibility']=compatibility_checks(available, None if fixture else pygame)
+            report['compatibility']=run_compatibility_stage(available,None if fixture else pygame,v3,inherited_video)
         finally:
             if not fixture:
                 pygame.quit()
-        report['interpretation']='Class checks and off-screen graphics only; original main audio lifecycle and integrated live mode remain unverified.' 
+        report['interpretation']='Class checks and graphics preview only; original main audio lifecycle and integrated live mode remain unverified.' 
     except BaseException as exc:
         report['status']='probe_failed'
         report['error']=type(exc).__name__+': '+str(exc)
@@ -285,7 +328,7 @@ def main():
             return 2
     try:
         result=json.loads(output.read_text())
-        preview=result.get('compatibility',{}).get('offscreen_original_renderer',{}).get('details',{})
+        preview=result.get('compatibility',{}).get('original_renderer_preview',{}).get('details',{})
         encoded=preview.pop('png_base64',None)
         if encoded:
             import base64
@@ -293,7 +336,7 @@ def main():
             png.write_bytes(base64.b64decode(encoded,validate=True))
             preview['preview_file']=str(png)
             output.write_text(json.dumps(result,indent=2)+'\n')
-            print('Off-screen UI preview:',str(png),flush=True)
+            print('Original renderer preview:',str(png),flush=True)
     except (OSError,ValueError) as exc:
         print('Report/preview conversion:',str(exc),flush=True)
     print('Probe exit:',child.returncode,'report:',str(output),flush=True)

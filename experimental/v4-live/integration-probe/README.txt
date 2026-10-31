@@ -1,7 +1,7 @@
-GrainBrick V3 interface inspection probe 0.2
+GrainBrick V3 interface inspection probe 0.3
 ===========================================
 Purpose: verify in-memory class replacement, parameter method dispatch and
-original renderer construction in a dummy off-screen display. The preceding
+original renderer construction with a usable display backend. The preceding
 0.1 report successfully captured every target module on the handheld.
 This is NOT a new V4 engine or a live-mode integration patch.
 
@@ -12,13 +12,13 @@ INSTALL AND RUN
    /userdata/roms/ports/grainbrick-v4-live/ directory.
    Do not replace any other V3/V4 file, config or calibration.
 4. Refresh PORTS and run GrainBrick V4 Inspect once.
-   It does not show the V3 interface. It should return to PORTS within
-   20 seconds (plus Python startup).
+   The screen may briefly switch while the normal video backend is used.
+   It should return to PORTS within 20 seconds (plus Python startup).
 5. Send BOTH files from grainbrick-v4-live/:
      v3-api-report.json
      v3-inspect.log
-   Also send v3-ui-preview.png if it was created. It is an off-screen image,
-   not the handheld display. If no report appears, send the inspection log.
+   Also send v3-ui-preview.png if it was created. It contains the original
+   renderer tabs/placeholder only, not a complete running interface. If no report appears, send the inspection log.
 
 WHAT IT DOES
 Uses the same installed system Pygame / NumPy fallback / surfarray preload
@@ -27,11 +27,21 @@ installed main extension with guarded startup. Pygame initialization and
 display/audio/joystick startup are intercepted. Python-level file mutations,
 process spawning, socket connections and direct audio-library loads are
 blocked by an audit hook. A metadata snapshot is collected at that boundary.
+FIX IN 0.3
+Your 0.2 report showed "dummy not available": KNULLI does not include SDL's
+dummy video backend. Class checks now run BEFORE graphics setup, so that
+error cannot hide their results. The preview tries dummy first, then the
+normal inherited/default video driver, with the installed V3 display-fit
+adapter. Only display/font initialization is enabled; mixer, joystick and
+global pygame.init stay intercepted. If both video attempts fail, the
+preview is marked skipped and the class-check results are still saved.
+
 After the import boundary, the tool temporarily replaces and restores the
 Parameter.set and UIEngine.draw methods to test replacement/dispatch. It
 constructs fresh parameter/control objects. Pygame display calls are then
-restored ONLY with dummy video/audio backends, to construct the original
-UIEngine and draw its tabs/placeholder off-screen. Device enumeration is
+restored to construct the original UIEngine and draw its tabs/placeholder.
+The native display may be initialized if dummy is unavailable; audio is not
+initialized. The V3 display-fit adapter is used with a native display. Device enumeration is
 stubbed during that check. No AudioWorker, DSP engine, recording, PCM or
 playback process is started. Filesystem/process guards stay active.
 
@@ -50,10 +60,11 @@ be redirected, or that its original audio worker safely stops/restarts.
 Do not launch V3 or V4 during the inspection.
 
 TESTING
-Nine host tests passed: metadata/argument extraction, blocked file writes,
+Eleven host tests passed: metadata/argument extraction, blocked file writes,
 directory writes and process starts, rejected V3 output paths, parameter
 setter interception/restoration, renderer class replacement/restoration,
-missing-module failure reporting and dummy-display PNG rendering. These
+missing-module failure reporting, dummy-display PNG rendering, graphics
+failure isolation and fallback when dummy is unavailable. These
 use fixture classes, not the actual ARM64 application. Bytecode writes are
 disabled. Actual compiled-class behavior still needs this handheld check.
 The actual compiled V3 module is ARM64 Python 3.12 and cannot be imported by

@@ -86,12 +86,40 @@ class CompatibilityTests(unittest.TestCase):
   ui.draw_placeholder=lambda self,c:pg.draw.rect(self.screen,(200,150,100),(30,30,80,80))
   original=ui.refresh_audio_outputs
   try:
-   r=probe.compatibility_checks(m,pg)['offscreen_original_renderer']
+   r=probe.compatibility_checks(m,pg)['original_renderer_preview']
    self.assertEqual(r['status'],'passed')
    self.assertEqual(r['details']['size'],[640,480])
    self.assertTrue(base64.b64decode(r['details']['png_base64']).startswith(b'\x89PNG'))
    self.assertIs(ui.refresh_audio_outputs,original)
   finally: pg.quit()
+ def test_unavailable_video_does_not_hide_class_results(self):
+  from unittest.mock import patch
+  def unavailable(): raise RuntimeError('dummy not available')
+  display=types.SimpleNamespace(init=unavailable,quit=lambda:None)
+  pg=types.SimpleNamespace(display=display)
+  with patch.dict(os.environ):
+   r=probe.run_compatibility_stage(self.modules(),pg,Path('/nonexistent'))
+  self.assertEqual(r['parameter_method_dispatch']['status'],'passed')
+  self.assertEqual(r['renderer_class_replacement']['status'],'passed')
+  self.assertEqual(r['graphics_setup']['status'],'failed')
+  self.assertEqual(len(r['graphics_setup']['attempts']),2)
+  self.assertEqual(r['original_renderer_preview']['status'],'skipped')
+ def test_missing_dummy_falls_back_to_platform_video(self):
+  from unittest.mock import patch
+  calls=[]
+  def initialize():
+   calls.append(os.environ.get('SDL_VIDEODRIVER'))
+   if len(calls)==1: raise RuntimeError('dummy not available')
+  display=types.SimpleNamespace(init=initialize,quit=lambda:None,get_driver=lambda:'fixture-native')
+  pg=types.SimpleNamespace(display=display,font=types.SimpleNamespace(init=lambda:None))
+  with tempfile.TemporaryDirectory() as d:
+   root=Path(d); (root/'gb_display_fit.py').write_text('def install(): pass\n')
+   with patch.dict(os.environ):
+    r=probe.run_compatibility_stage(self.modules(),pg,root)
+  self.assertEqual(calls,['dummy',None])
+  self.assertEqual(r['graphics_setup']['status'],'passed')
+  self.assertEqual(r['graphics_setup']['attempts'][-1]['driver'],'fixture-native')
+  self.assertEqual(r['renderer_class_replacement']['status'],'passed')
  def test_missing_main_alias_is_reported(self):
   m=self.modules(); m['main']=None
   r=probe.compatibility_checks(m)
