@@ -25,12 +25,16 @@ def main():
         for path in locks:
             lock=stack.enter_context(path.open('a'))
             fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-        print('GRAINBRICK V4 FINAL 1.1:',str(app),flush=True)
+        print('GRAINBRICK V4 STANDALONE 1.2:',str(app),flush=True)
         prepare(app)
         config=device_config(app/'config.json')
+        if 'V4_USB_NOT_CONNECTED' not in config['capture']:
+            os.environ.setdefault('GRAINBRICK_USB_IN',config['capture'])
         sys.dont_write_bytecode=True
         os.environ.update(GRAINBRICK_SCREEN='640x480',GRAINBRICK_SCALE='fast',GRAINBRICK_FIT='1',GRAINBRICK_BUTTONS='1',GRAINBRICK_AUDIO='1')
         os.environ.setdefault('OPENBLAS_NUM_THREADS','1')
+        from v4_buttons import prepare_buttons
+        prepare_buttons(app)
         state={'installed':False}
         def install(event,args):
             if event!='os.mkdir' or state['installed']:return

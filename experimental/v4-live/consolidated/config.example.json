@@ -1,0 +1,5 @@
+{
+  "capture": "auto",
+  "playback": "auto",
+  "latency_us": 24000
+}

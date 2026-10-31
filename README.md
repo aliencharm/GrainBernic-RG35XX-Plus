@@ -1,3 +1,17 @@
+# GrainBrick V4 — complete RG35XX Plus build
+
+[**Download the complete standalone V4 1.2 ZIP**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4_Standalone_1.2.zip)
+
+Extract into `/userdata/roms/ports/` and launch **GrainBrick V4**. No V3 or earlier V4 installation is needed. The ZIP includes the original app/native DSP, RG35XX display/controller adapters, NumPy/resources, original demo/preset, LIVE input, three mix knobs, freeze and dry REC monitoring. Personal recordings and custom sample libraries are not included.
+
+Target: RG35XX Plus with KNULLI Scarab 20260511. Tested interface: Tascam DR-40X. The app uses KNULLI's system Python 3.12/Pygame/ALSA tools. Connect USB before launch; button mapping uses the existing KNULLI controller profile, with calibration as a fallback.
+
+[Installation, controls, credits and known limits](experimental/v4-live/consolidated/README.md). The audio baseline was tested on-device; the new complete packaging passed standalone host/ARM-emulation checks and awaits one fresh-install handheld check.
+
+---
+
+The earlier V3 port documentation is retained below.
+
 # GrainBernik
 
 **GrainBernik** is an unofficial fork of [ETRNLIAM/GrainBrick](https://github.com/ETRNLIAM/GrainBrick) for the **Anbernic RG40XX H** (640×480) running KNULLI.

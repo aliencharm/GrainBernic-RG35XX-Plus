@@ -142,6 +142,17 @@ signal.alarm(35)
 try:
     if final_entry:
         import runpy
+        import v4_install
+        if hasattr(v4_install,'usb_devices'):
+            v4_install.usb_devices=lambda asound:('plughw:CARD=Series,DEV=0','plughw:CARD=Series,DEV=0')
+        if '--system-mapping' in sys.argv:
+            import v4_buttons
+            original_prepare=v4_buttons.prepare_buttons
+            joy=types.SimpleNamespace(init=lambda:None,get_name=lambda:'Anbernic RG35XX-Plus Controller',
+                                      get_guid=lambda:'target-guid',get_numbuttons=lambda:11,
+                                      get_numaxes=lambda:0,get_numhats=lambda:1)
+            hardware=types.SimpleNamespace(joystick=types.SimpleNamespace(init=lambda:None,get_count=lambda:1,Joystick=lambda i:joy))
+            v4_buttons.prepare_buttons=lambda target:original_prepare(target,hardware,(app.parent/'es_input.cfg',))
         os.chdir(app)
         runpy.run_path(str(app/'v4_entry.py'),run_name='__main__')
     else:importlib.import_module('main')
