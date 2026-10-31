@@ -5,12 +5,13 @@ from pathlib import Path
 import zipfile
 
 root=Path(__file__).resolve().parent
-release=root.parent/'releases/GrainBrick_V4_Integrated_0.1.4.zip'
+release=root.parent/'releases/GrainBrick_V4_Integrated_0.1.5.zip'
 files={
     'GrainBrick V4 Integrated.sh':root/'GrainBrick V4 Integrated.sh',
     'grainbrick-v4-live/integrated_entry.py':root/'integrated_entry.py',
     'grainbrick-v4-live/original_adapter.py':root/'original_adapter.py',
     'grainbrick-v4-live/live_source.py':root/'live_source.py',
+    'grainbrick-v4-live/record_monitor.py':root/'record_monitor.py',
     'V4-INTEGRATED-README.md':root/'README.md',
 }
 manifest={name:hashlib.sha256(path.read_bytes()).hexdigest() for name,path in files.items()}

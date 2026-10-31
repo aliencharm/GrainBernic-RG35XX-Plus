@@ -10,6 +10,22 @@ class LiveController:
         self.main=main;self.config=config;self.mode='REC';self.message=''
         self.capture_factory=capture_factory or (lambda:ArecordCapture(self.config['capture'],latency_us=self.config.get('latency_us',24000)))
         self.initialized=False;self.sources=weakref.WeakSet()
+        self.record_monitor=None;self.record_worker=None
+        self.live_output_restore=None
+    def configure_live_output(self,audio):
+        self.restore_live_output()
+        names=('low_latency_buffer_frames','low_latency_period_frames','low_latency_pipe_bytes')
+        self.live_output_restore=(audio,{name:getattr(audio,name) for name in names})
+        audio.low_latency_buffer_frames=2048
+        audio.low_latency_period_frames=512
+        audio.low_latency_pipe_bytes=4096
+        audio._v4_live_output=True
+        print('ORIGINAL LIVE OUTPUT REQUEST: buffer_frames=2048 period_frames=512 pipe_bytes=4096',flush=True)
+    def restore_live_output(self):
+        if self.live_output_restore is None:return
+        audio,values=self.live_output_restore;self.live_output_restore=None
+        for name,value in values.items():setattr(audio,name,value)
+        audio._v4_live_output=False
     def bus(self):return self.main.params
     def active(self):return self.bus().get('live.enabled')>=.5
     def source(self):
@@ -37,6 +53,7 @@ class LiveController:
         main=self.main;pcm=self.choose_output();self.ensure_worker(pcm)
         worker=main.audio_worker
         worker.stop()
+        self.configure_live_output(main.audio)
         source=self.source()
         if source is None:raise RuntimeError('The original DSP chain has no live-source adapter')
         source.close();source.data.fill(0);source.writer=0;source.written=0;source.processed=0;source._last_report=0;source.live_engine=None
@@ -50,6 +67,7 @@ class LiveController:
     def stop_live(self):
         worker=getattr(self.main,'audio_worker',None)
         if worker is not None and worker.running:worker.stop()
+        self.restore_live_output()
         self.bus().set('live.enabled',0);self.bus().set('live.freeze',0)
         self.bus().set('transport.playing',0)
         if getattr(self.main,'ui',None) is not None:self.main.ui.set_sample(getattr(self.main,'sample',None))
@@ -58,6 +76,7 @@ class LiveController:
     def prepare_runtime(self):
         if self.initialized:return
         self.initialized=True
+        self.install_record_monitor()
         # Original state restoration may include our keys, but never auto-arm LIVE.
         for key in ('live.enabled','live.freeze','live.mix'):self.bus().set(key,0)
         original=self.main.handle_record_action
@@ -97,6 +116,56 @@ class LiveController:
                     return True
             return original(action,value)
         self.main.handle_record_action=handle
+    def stop_record_monitor(self):
+        if self.record_monitor is not None:
+            self.record_monitor.stop();self.record_monitor=None
+    def restore_record_worker(self):
+        worker=self.record_worker;self.record_worker=None
+        if worker is not None and worker is getattr(self.main,'audio_worker',None) and not worker.running:
+            worker.start()
+    def install_record_monitor(self):
+        original_start=self.main.start_input_recording
+        def start():
+            self.stop_record_monitor()
+            worker=getattr(self.main,'audio_worker',None)
+            self.record_worker=worker if worker is not None and worker.running else None
+            if self.record_worker is not None:self.record_worker.stop()
+            try:
+                # Keep the original arecord WAV writer; only reduce ALSA period size.
+                import subprocess
+                original_popen=subprocess.Popen
+                import threading
+                recording_thread=threading.get_ident()
+                def record_popen(args,*a,**kw):
+                    if threading.get_ident()==recording_thread:
+                        from record_monitor import recording_command
+                        args=recording_command(args)
+                    return original_popen(args,*a,**kw)
+                subprocess.Popen=record_popen
+                try:result=original_start()
+                finally:subprocess.Popen=original_popen
+                if self.main.record_mode=='recording':
+                    try:
+                        from record_monitor import RecordingMonitor
+                        path=self.main.recorder.current_path
+                        if callable(path):path=path()
+                        self.record_monitor=RecordingMonitor(path,self.config['playback'])
+                        self.record_monitor.start()
+                    except Exception as exc:
+                        print('REC MONITOR SETUP FAILED:',str(exc),'(original recording continues)',flush=True)
+                else:self.restore_record_worker()
+                return result
+            except Exception:
+                self.stop_record_monitor();self.restore_record_worker();raise
+        self.main.start_input_recording=start
+        def ending(original):
+            def finish(*args,**kwargs):
+                self.stop_record_monitor()
+                try:return original(*args,**kwargs)
+                finally:self.restore_record_worker()
+            return finish
+        for name in ('stop_input_recording_to_editor','cancel_input_recording'):
+            setattr(self.main,name,ending(getattr(self.main,name)))
     def before_input(self):
         self.prepare_runtime()
         if self.active() and self.main.controls.current_tab=='SAMPLE':self.main.record_mode='ready'
@@ -140,6 +209,14 @@ class LiveController:
 
 def install_at_boot(main,config,capture_factory=None,shared_storage=True):
     controller=LiveController(main,config,capture_factory)
+    audio_cls=main.AudioOutput
+    original_audio_start=audio_cls.start
+    def audio_start(self):
+        result=original_audio_start(self)
+        if getattr(self,'_v4_live_output',False):
+            print('ORIGINAL LIVE OUTPUT ACTIVE: low_latency='+str(self.low_latency_active)+' buffer_frames='+str(self.low_latency_buffer_frames)+' period_frames='+str(self.low_latency_period_frames)+' pipe_bytes='+str(self.low_latency_pipe_bytes),flush=True)
+        return result
+    audio_cls.start=audio_start
     parameter_module=sys.modules['engine.parameters']
     original_create=parameter_module.create_default_parameters
     def create():return add_live_parameters(original_create())
@@ -192,6 +269,10 @@ def install_at_boot(main,config,capture_factory=None,shared_storage=True):
         elif getattr(self,'_v4_display_source',None) is not None:
             self.set_sample(getattr(main,'sample',None));self._v4_display_source=None
         result=original_draw(self,*args,**kwargs)
+        if args[0].current_tab=='SAMPLE' and getattr(main,'record_mode',None)=='recording':
+            monitor=controller.record_monitor
+            status=monitor.status if monitor is not None else 'OFF'
+            self.text('REC MONITOR '+status+' / DRY 100%',42,662,2,self.ACCENT)
         if args[0].current_tab=='SAMPLE' and getattr(main,'record_mode',None)=='edit' and not getattr(self,'info_mode',False):
             import pygame
             pygame.draw.rect(self.screen,self.screen.get_at((0,200))[:3],(36,695,955,24))

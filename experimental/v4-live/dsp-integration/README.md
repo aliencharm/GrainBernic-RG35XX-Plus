@@ -1,4 +1,4 @@
-# GrainBrick V4 Integrated 0.1.4 — experimental hardware-test build
+# GrainBrick V4 Integrated 0.1.5 — experimental hardware-test build
 
 Continuous USB input routed through the ORIGINAL beta 1.0 GranularEngine and DSPChain, running the original application and tabs. This is separate from the previous standalone V4 / Original UI LIVE frontend. It is not yet validated on the RG35XX Plus with real USB audio.
 
@@ -6,7 +6,7 @@ Continuous USB input routed through the ORIGINAL beta 1.0 GranularEngine and DSP
 
 Requires the working V3 in `/userdata/roms/ports/grainbrick-beta/` and the working V4 device configuration in `/userdata/roms/ports/grainbrick-v4-live/config.json`.
 
-Extract this ZIP into `/userdata/roms/ports/`, merging its `grainbrick-v4-live` folder with the existing folder. It adds three Python files and a new launcher; it contains no configuration or preference files to overwrite. Launch **GrainBrick V4 Integrated**. Close V3 and other V4 launchers first.
+Extract this ZIP into `/userdata/roms/ports/`, merging its `grainbrick-v4-live` folder with the existing folder. It adds four Python files and a new launcher; it contains no configuration or preference files to overwrite. Launch **GrainBrick V4 Integrated**. Close V3 and other V4 launchers first.
 
 First launch copies the installed original application into `grainbrick-v4-integrated/`; allow extra startup time. The V3 directory stays unchanged. Original binaries are checked against the inspected beta main SHA-256. User recordings, samples and projects are not copied. The integrated copy has its own recordings, samples, projects and saved DSP state. No proprietary original binaries are distributed in this ZIP.
 
@@ -23,15 +23,19 @@ Suggested first granular test: size 20–60 ms, pitch 0 semitones, position cent
 
 The live dry/granular mix feeds the original downstream DSP chain, so downstream FX affect the mix. This is not an effects bypass. Original file-mode granular behavior is retained. Existing standalone V4 settings are not imported into the original DSP controls.
 
-## Original REC restored (0.1.4)
+## LIVE output latency test (0.1.5)
 
-This version removes the experimental software recording monitor from 0.1.2/0.1.3 and restores the pre-monitor original compiled recording start, stop and cancel functions. It adds no capture buffer/period flags, monitor playback process, file follower, gain conversion or recording-worker lifecycle changes. The V3 USB device compatibility adapter is retained. The original WAV recording/editor/save workflow is used.
+This version returns to the user-selected 0.1.3 baseline with 100% dry REC monitoring and reduces only the LIVE output buffering request. Original AudioOutput uses a 7168-frame low-latency buffer, 512-frame period and 8192-byte output pipe. LIVE requests 2048 frames, the same 512-frame period and a 4096-byte pipe. At 48 kHz, the requested output buffer capacity falls from about 149 ms to 43 ms. These are buffer capacities, not measured end-to-end latency. The original values are restored on LIVE stop/error/exit; REC monitoring retains the 0.1.3 configuration.
 
-To hear input while recording in REC mode, use Tascam hardware direct monitoring. Turn it off before using LIVE, where the application provides its software dry/wet processing. LIVE/freeze/DSP integration remains available. A software REC monitor that meets the recording quality requirement has not been implemented.
+At LIVE wet mix 0%, input bypasses the granular mix, but still passes through USB capture/output and the original downstream FX/DSP. Delay/reverb/tape/other enabled effects can contribute their own response. For a latency comparison, use a synth patch with a sharp attack, wet 0%, downstream effects off, and comfortable DSP headroom. Compare the onset with 0.1.3. Then test usual FX and note any clicks. Smaller buffers reduce scheduling tolerance, so this build needs hardware testing. No zero-latency claim is made.
 
-Install by merging the updated files as usual. If an old `grainbrick-v4-live/record_monitor.py` remains from the prior ZIP, it is unused; it can be deleted. Do not delete recordings or settings. Existing recordings are preserved and are not repaired or rewritten by this update.
+`v4-integrated.log` prints `ORIGINAL LIVE OUTPUT REQUEST` and `ORIGINAL LIVE OUTPUT ACTIVE`, including whether original low-latency startup succeeded. An active flag confirms the original startup branch, not independently queried ALSA hardware timing. Send both logs if latency persists or clicks increase. 21 host tests passed; ARM-emulated original main and actual original AudioOutput argument/start/restore checks passed with audio process creation mocked.
 
-The submitted 0.1.3 log reports zero skipped monitor frames for its two recordings; that does not establish saved sample integrity. Waveform screenshots alone cannot prove missing frames. The rollback is based on the requested original recording behavior. Original-function retention is asserted in the actual ARM-emulated app, alongside LIVE/FX/freeze and REC routing checks.
+## REC monitoring retained from 0.1.3
+
+REC plays the unprocessed recorded PCM at unity gain, without the granular/FX chain. It retains the original arecord WAV writer, format, path and edit/save workflow, with the 0.1.3 capture request of 24 ms buffer / 6 ms period. It follows the growing WAV and uses a 64 ms output buffer / 8 ms period, with no sample skipping or gain conversion. These capture timing changes differ from unmodified V3; 0.1.4 remains available if original REC without software monitoring is wanted. This build deliberately retains the monitoring behavior the user selected after testing both.
+
+Keep Tascam direct monitoring off. Record a short sample, check dry monitoring, stop/cancel and repeat. The added REC monitor cannot write to the recorded file; failure is logged while the original recording continues. Previous user tests reported this configuration working. Latest hardware latency testing is pending.
 
 ## Recording denoise controls (0.1.1)
 

@@ -61,7 +61,7 @@ def main():
     with (control/'.lock').open('a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         config=load_device_config(control)
-        print('V4 INTEGRATED ORIGINAL APP 0.1.4 preparing',str(runtime),flush=True)
+        print('V4 INTEGRATED ORIGINAL APP 0.1.5 preparing',str(runtime),flush=True)
         prepare_original(source,runtime)
         sys.dont_write_bytecode=True
         os.environ.update(GRAINBRICK_SCREEN='640x480',GRAINBRICK_SCALE='fast',GRAINBRICK_FIT='1',GRAINBRICK_BUTTONS='1',GRAINBRICK_AUDIO='1')
@@ -82,6 +82,8 @@ def main():
         finally:
             controller=state.get('controller')
             if controller is not None:
+                controller.stop_record_monitor()
+                controller.restore_live_output()
                 for live_source in list(controller.sources):live_source.close()
         if not state['installed']:raise RuntimeError('Original-app source switch was not installed')
 
