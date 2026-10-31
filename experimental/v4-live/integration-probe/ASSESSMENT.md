@@ -41,3 +41,34 @@ tests passed. It needs one run on the installed ARM64 Python 3.12 handheld.
 Its report may be partial; that must be assessed before any runtime adapter
 is designed. No original-UI live integration has been implemented or verified.
 The working standalone V4 0.1.1 remains the fallback.
+
+
+## First handheld report received
+
+Probe 0.1 returned `guarded_boundary_reached` at `blocked os.mkdir`. All eight
+target modules were captured (`missing_modules: []`), with Python 3.12.8,
+Pygame 2.5.2 and NumPy 1.26.4. This confirms Python visibility of the classes,
+not just embedded names. Main retains aliases to UIEngine, ControlManager,
+AudioWorker, GranularEngine, AudioOutput and other engine classes.
+
+Verified constructor metadata:
+
+- UIEngine(sample=None)
+- ControlManager(parameters)
+- ParameterBus(); add(param_id, value, minimum, maximum), get/set
+- AudioWorker(granular, audio, block_size=512)
+- AudioOutput(rate=48000, channels=2, device='default')
+- GranularEngine(sample, parameters, output_rate=48000)
+- DSPChain(granular, parameters, output_rate=48000)
+
+UIEngine.draw takes controls, params, granular, sample and optional audio
+worker/browser/project data. AudioWorker exposes start/stop/running and
+output-device requests. This is substantially better evidence for reuse
+than the static strings, but constructor execution and call dispatch remain
+unverified for these actual compiled classes.
+
+Probe 0.2 adds bounded checks for class replacement, compiled ParameterBus
+setter dispatch, and original UI constructor/tabs/placeholder rendering into
+a dummy display. No audio worker is instantiated. A failure is recorded per
+check, and modified methods are restored. It does not yet implement a LIVE
+tab or establish safe handover of the USB PCM from the original audio worker.

@@ -95,9 +95,84 @@ def install_guard(snapshot):
     return stop
 
 
+def compatibility_checks(modules, pg=None):
+    results={}
+    def check(name, task):
+        try:
+            results[name]={'status':'passed','details':task()}
+        except BaseException as exc:
+            results[name]={'status':'failed','error':type(exc).__name__+': '+str(exc)}
+    parameter_module=modules.get('engine.parameters')
+    renderer=modules.get('ui.renderer')
+    main_module=modules.get('main')
+    def parameter_dispatch():
+        bus=parameter_module.ParameterBus()
+        bus.add('v4.probe',0.25,0.0,1.0)
+        cls=parameter_module.Parameter
+        original=cls.set
+        calls=[]
+        def intercepted(self,value):
+            calls.append(value)
+            return original(self,value)
+        try:
+            cls.set=intercepted
+            bus.set('v4.probe',0.75)
+            actual=bus.get('v4.probe')
+            if not calls or abs(actual-0.75)>0.000001:
+                raise RuntimeError('ParameterBus.set did not dispatch through the replaced Parameter.set')
+            return {'intercepted_calls':len(calls),'result':actual,
+                    'scope':'ParameterBus -> Parameter compiled call path only'}
+        finally:
+            cls.set=original
+    check('parameter_method_dispatch',parameter_dispatch)
+    def class_mutation():
+        cls=renderer.UIEngine
+        if main_module is None or main_module.UIEngine is not cls:
+            raise RuntimeError('Main renderer alias identity did not match')
+        original=cls.draw
+        token=object()
+        def replacement(self,*args,**kwargs):
+            return token
+        try:
+            cls.draw=replacement
+            if main_module.UIEngine.draw(object()) is not token:
+                raise RuntimeError('Replaced renderer method not visible through main alias')
+            return {'class_mutable':True,'main_alias_matches':True,
+                    'scope':'Python alias dispatch; full main event-loop dispatch still unverified'}
+        finally:
+            cls.draw=original
+    check('renderer_class_replacement',class_mutation)
+    if pg is not None:
+        def render_preview():
+            if pg.display.get_driver()!='dummy':
+                raise RuntimeError('Off-screen renderer test requires the dummy video driver')
+            parameters=parameter_module.create_default_parameters()
+            controls=modules['engine.control'].ControlManager(parameters)
+            cls=renderer.UIEngine
+            old_refresh=cls.refresh_audio_outputs
+            # No device enumeration or audio output during this graphics-only check.
+            cls.refresh_audio_outputs=lambda self: None
+            try:
+                ui=cls(None)
+                ui.screen.fill((0,0,0))
+                ui.draw_tabs(controls)
+                ui.draw_placeholder(controls)
+                import io,base64
+                buf=io.BytesIO()
+                pg.image.save(ui.screen,buf,'preview.png')
+                return {'size':list(ui.screen.get_size()),
+                        'tab':simple(controls.current_tab),
+                        'scope':'Original renderer constructor, tabs and placeholder only; no audio',
+                        'png_base64':base64.b64encode(buf.getvalue()).decode('ascii')}
+            finally:
+                cls.refresh_audio_outputs=old_refresh
+        check('offscreen_original_renderer',render_preview)
+    return results
+
+
 def worker(v3,report_fd,fixture=False):
     # Parent opens the output file first. The guard blocks subsequent path writes.
-    report={'probe_version':'0.1','python':platform.python_version(),'machine':platform.machine(),
+    report={'probe_version':'0.2','python':platform.python_version(),'machine':platform.machine(),
             'v3_directory':str(v3),'status':'initializing','modules':{},'boundary':None}
     snapshot={}
     try:
@@ -121,7 +196,11 @@ def worker(v3,report_fd,fixture=False):
             report['dependencies']={'pygame':pygame.version.ver,'numpy':numpy.__version__}
         sys.path.insert(0,str(v3))
         stop=install_guard(snapshot)
+        originals=[]
         if not fixture:
+            originals=[(pygame,'init',pygame.init),(pygame.display,'init',pygame.display.init),
+                       (pygame.display,'set_mode',pygame.display.set_mode),
+                       (pygame.mixer,'init',pygame.mixer.init),(pygame.joystick,'init',pygame.joystick.init)]
             def blocked(*args,**kwargs):
                 stop('stopped before pygame startup')
             pygame.init=blocked
@@ -146,7 +225,20 @@ def worker(v3,report_fd,fixture=False):
             if module is not None:
                 report['modules'][name]=module_info(module)
         report['missing_modules']=[name for name in TARGETS if name not in report['modules']]
-        report['interpretation']='Metadata only: attribute replacement and compiled call behavior are not verified.'
+        # Restore Pygame calls only with dummy backends for an isolated off-screen
+        # constructor/drawing check. File/process/audio-library guards stay active.
+        if not fixture:
+            for owner,name,original in originals:
+                setattr(owner,name,original)
+            pygame.display.init()
+            pygame.font.init()
+        try:
+            available={name:collected.get(name) or sys.modules.get(name) for name in TARGETS}
+            report['compatibility']=compatibility_checks(available, None if fixture else pygame)
+        finally:
+            if not fixture:
+                pygame.quit()
+        report['interpretation']='Class checks and off-screen graphics only; original main audio lifecycle and integrated live mode remain unverified.' 
     except BaseException as exc:
         report['status']='probe_failed'
         report['error']=type(exc).__name__+': '+str(exc)
@@ -191,6 +283,19 @@ def main():
         except subprocess.TimeoutExpired:
             print('Probe timed out; no integration readiness established',flush=True)
             return 2
+    try:
+        result=json.loads(output.read_text())
+        preview=result.get('compatibility',{}).get('offscreen_original_renderer',{}).get('details',{})
+        encoded=preview.pop('png_base64',None)
+        if encoded:
+            import base64
+            png=output.with_name('v3-ui-preview.png')
+            png.write_bytes(base64.b64decode(encoded,validate=True))
+            preview['preview_file']=str(png)
+            output.write_text(json.dumps(result,indent=2)+'\n')
+            print('Off-screen UI preview:',str(png),flush=True)
+    except (OSError,ValueError) as exc:
+        print('Report/preview conversion:',str(exc),flush=True)
     print('Probe exit:',child.returncode,'report:',str(output),flush=True)
     return child.returncode
 

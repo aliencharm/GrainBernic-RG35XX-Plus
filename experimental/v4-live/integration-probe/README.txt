@@ -1,7 +1,8 @@
-GrainBrick V3 interface inspection probe 0.1
+GrainBrick V3 interface inspection probe 0.2
 ===========================================
-Purpose: find runtime Python class/method metadata exposed by the installed
-compiled V3 package, before deciding whether V4 can reuse the original UI.
+Purpose: verify in-memory class replacement, parameter method dispatch and
+original renderer construction in a dummy off-screen display. The preceding
+0.1 report successfully captured every target module on the handheld.
 This is NOT a new V4 engine or a live-mode integration patch.
 
 INSTALL AND RUN
@@ -16,7 +17,8 @@ INSTALL AND RUN
 5. Send BOTH files from grainbrick-v4-live/:
      v3-api-report.json
      v3-inspect.log
-   If no report appears, send the inspection log.
+   Also send v3-ui-preview.png if it was created. It is an off-screen image,
+   not the handheld display. If no report appears, send the inspection log.
 
 WHAT IT DOES
 Uses the same installed system Pygame / NumPy fallback / surfarray preload
@@ -25,23 +27,35 @@ installed main extension with guarded startup. Pygame initialization and
 display/audio/joystick startup are intercepted. Python-level file mutations,
 process spawning, socket connections and direct audio-library loads are
 blocked by an audit hook. A metadata snapshot is collected at that boundary.
-Only the two report/log files in the V4 directory are intentionally written.
-No class constructors, DSP functions, UI methods or playback commands are
-called by the metadata inspection itself. No proprietary files are bundled.
+After the import boundary, the tool temporarily replaces and restores the
+Parameter.set and UIEngine.draw methods to test replacement/dispatch. It
+constructs fresh parameter/control objects. Pygame display calls are then
+restored ONLY with dummy video/audio backends, to construct the original
+UIEngine and draw its tabs/placeholder off-screen. Device enumeration is
+stubbed during that check. No AudioWorker, DSP engine, recording, PCM or
+playback process is started. Filesystem/process guards stay active.
+
+The report/log and optional preview PNG in the V4 directory are the only
+intended file changes. Original methods are restored after each check.
+No proprietary files are bundled.
 
 BOUNDARIES
 These are Python-level guards, not a separate OS filesystem sandbox for
 native code. The tool is for this known installed beta package only. Reports
 may be partial if the compiled loader tries a blocked operation early. A
 missing class or method in a partial report does not prove it is unavailable.
-Compiled module globals and method metadata are evidence only: successful
-attribute replacement and actual compiled call dispatch must be tested later.
+Read each compatibility result separately. A successful parameter call path
+and renderer alias check do not prove that original main's event loop can
+be redirected, or that its original audio worker safely stops/restarts.
 Do not launch V3 or V4 during the inspection.
 
 TESTING
-Five host fixture tests passed: method argument/default metadata extraction,
-blocked file writes, blocked directory creation, blocked subprocess startup,
-and rejected output paths inside the V3 tree. Bytecode writing was disabled.
+Nine host tests passed: metadata/argument extraction, blocked file writes,
+directory writes and process starts, rejected V3 output paths, parameter
+setter interception/restoration, renderer class replacement/restoration,
+missing-module failure reporting and dummy-display PNG rendering. These
+use fixture classes, not the actual ARM64 application. Bytecode writes are
+disabled. Actual compiled-class behavior still needs this handheld check.
 The actual compiled V3 module is ARM64 Python 3.12 and cannot be imported by
 the x86_64 cloud interpreter. This diagnostic still needs the handheld run.
 
