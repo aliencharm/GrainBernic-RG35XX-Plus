@@ -211,7 +211,8 @@ class LiveController:
             ui._draw_comp_knob(cx,430,62,value,selected)
             text=str(round(value*100))+'%'
             ui.text(text,cx-len(text)*9,510,3,color)
-        ui.text('FREEZE  '+('ON' if self.bus().get('live.freeze')>=.5 else 'OFF'),55,580,2)
+        ui.text('FREEZE [Y]: '+('ON' if self.bus().get('live.freeze')>=.5 else 'OFF'),55,580,2)
+        ui.text('HOLD LIVE BUFFER / PRESS Y TO TOGGLE',55,615,2)
     def draw_live_footer(self,ui):
         import pygame
         pygame.draw.rect(ui.screen,ui.screen.get_at((0,200))[:3],(36,704,955,64))
