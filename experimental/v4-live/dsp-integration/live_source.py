@@ -11,7 +11,8 @@ from pathlib import Path
 import numpy as np
 
 RATE=48000
-LIVE_DEFAULTS={'live.enabled':(0.,0.,1.),'live.mix':(0.,0.,1.),'live.freeze':(0.,0.,1.)}
+LIVE_DEFAULTS={'live.enabled':(0.,0.,1.),'live.mix':(0.,0.,1.),'live.freeze':(0.,0.,1.),
+               'live.fx_mix':(1.,0.,1.),'live.tape_mix':(1.,0.,1.)}
 
 def add_live_parameters(bus):
     for key,(value,lo,hi) in LIVE_DEFAULTS.items():
@@ -118,9 +119,10 @@ class SwitchableSource:
         mix=max(0.,min(1.,self.parameters.get('live.mix')))
         if self.processed-self._last_report>=self.rate*2:
             self._last_report=self.processed
-            print('ORIGINAL LIVE SOURCE frames=%d input_peak=%.4f grain_peak=%.4f mix=%.2f size_s=%.3f density=%.1f pitch_st=%.1f freeze=%d' %
+            print('ORIGINAL LIVE SOURCE frames=%d input_peak=%.4f grain_peak=%.4f mix=%.2f size_s=%.3f density=%.1f pitch_st=%.1f freeze=%d fx_mix=%.2f tape_mix=%.2f' %
                   (self.processed,float(np.max(np.abs(dry))),float(np.max(np.abs(wet))),mix,
-                   self.parameters.get('grain.size'),self.parameters.get('grain.density'),self.parameters.get('grain.pitch'),self.parameters.get('live.freeze')>=.5),flush=True)
+                   self.parameters.get('grain.size'),self.parameters.get('grain.density'),self.parameters.get('grain.pitch'),self.parameters.get('live.freeze')>=.5,
+                   self.parameters.get('live.fx_mix'),self.parameters.get('live.tape_mix')),flush=True)
         return (dry*(1.-mix)+wet*mix).astype(np.float32,copy=False)
     def close(self):
         finalizer=getattr(self,'_finalizer',None)

@@ -54,7 +54,7 @@ def install():
         self.capture_mode=False
     def poll_input(self,*args,**kwargs):
         if integrated:
-            actions={1:'X',2:'A',3:'TAB_NEXT',4:'TAB_NEXT',5:'TAB_PREV',6:'TAB_PREV',7:'Y',8:'RIGHT',9:'B',10:'X',11:'A',12:'B',13:'EXIT'}
+            actions={1:'X',2:'A',3:'TAB_NEXT',4:'TAB_NEXT',5:'TAB_PREV',6:'TAB_PREV',7:'Y',8:'RIGHT',9:'DOWN',10:'LEFT',11:'DOWN',12:'LEFT',13:'UP',14:'RIGHT',15:'UP',16:'RIGHT',17:'B',18:'X',19:'A',20:'B',21:'EXIT'}
             action=actions.get(state['frames'])
             return [(action,None)] if action else []
         return [('EXIT',None) for ev in pg.event.get() if ev.type==pg.QUIT]
@@ -114,12 +114,12 @@ def install():
                 def no_record_file():state['record_start_delegated']+=1
                 main.start_input_recording=no_record_file
         if integrated:
-            report.setdefault('frames',[]).append({'frame':state['frames'],'tab':main.controls.current_tab,'record_mode':main.record_mode,'mode':controller.mode,'active':controller.active(),'freeze':main.params.get('live.freeze'),'mix':main.params.get('live.mix'),'worker':bool(main.audio_worker and main.audio_worker.running)})
+            report.setdefault('frames',[]).append({'frame':state['frames'],'tab':main.controls.current_tab,'record_mode':main.record_mode,'mode':controller.mode,'active':controller.active(),'freeze':main.params.get('live.freeze'),'mix':main.params.get('live.mix'),'fx_mix':main.params.get('live.fx_mix'),'tape_mix':main.params.get('live.tape_mix'),'worker':bool(main.audio_worker and main.audio_worker.running)})
         original_draw(self,*args,**kwargs)
-        if integrated and state['frames'] in (3,4,5):
+        if integrated and state['frames'] in (3,4,5,13):
             pg.image.save(self.screen,str(app/('integrated-frame-'+str(state['frames'])+'.png')))
             report['live_waveform_fields']=list(vars(self.waveform))
-        if state['frames']>=(14 if integrated else 3):
+        if state['frames']>=(22 if integrated else 3):
             pg.image.save(self.screen,str(app/'original-record-page.png'))
             pg.event.post(pg.event.Event(pg.QUIT))
     ui_cls.draw=draw
@@ -146,6 +146,9 @@ if integrated:
     assert any(f['tab']=='FX' and f['active'] and f['worker'] for f in frames),frames
     assert any(f['tab']=='GRAIN' and f['active'] and f['worker'] for f in frames),frames
     assert any(f['freeze']==1 for f in frames),frames
+    assert any(f['fx_mix']<1 for f in frames),frames
+    assert any(f['tape_mix']<1 for f in frames),frames
+    assert any(f['mix']>=.1 for f in frames),frames
     assert state['record_start_delegated']==1,state
     assert any(f['mode']=='REC' and not f['active'] for f in frames[3:]),frames
     print('PASS original recording-page REC/LIVE routing, LIVE across original GRAIN/FX tabs, freeze, stop and original REC action delegation',flush=True)

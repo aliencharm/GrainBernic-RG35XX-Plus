@@ -55,12 +55,20 @@ class ImpulseSource(Source):
         self.phase+=frames;self.calls+=1
         return out
 
-def impulse_run(delay_mix):
+def impulse_run(delay_mix,stage_mix=None,tape_mix=None,tape_enabled=0):
     bus=modules['engine.parameters'].create_default_parameters()
-    for key,value in [('transport.playing',1),('tape.enabled',0),('orbix.enabled',0),
+    for key,value in [('transport.playing',1),('tape.enabled',tape_enabled),('orbix.enabled',0),
                       ('delay.time',100),('delay.feedback',0),('delay.mix',delay_mix),
                       ('reverb.mix',0),('shimmer.mix',0)]:bus.set(key,value)
+    if stage_mix is not None or tape_mix is not None:
+        from live_source import add_live_parameters
+        from stage_mix import StageMix
+        add_live_parameters(bus);bus.set('live.enabled',1)
+        if stage_mix is not None:bus.set('live.fx_mix',stage_mix)
+        if tape_mix is not None:bus.set('live.tape_mix',tape_mix)
     original=chain_cls(ImpulseSource(),bus,48000)
+    if stage_mix is not None:original.fx=StageMix(original.fx,'live.fx_mix')
+    if tape_mix is not None:original.tape=StageMix(original.tape,'live.tape_mix')
     result=[]
     for _ in range(150):result.append(original.render(512).copy())
     return np.concatenate(result,axis=0)
@@ -72,6 +80,33 @@ echo=float(np.sum(effected[window]**2))
 assert np.isfinite(effected).all()
 assert echo>max(1e-8,baseline*10),(baseline,echo)
 print('PASS original delay processes inserted audio:',{'dry_echo_window_energy':baseline,'delay_echo_window_energy':echo},flush=True)
+
+np.testing.assert_array_equal(impulse_run(.8,stage_mix=1),effected)
+np.testing.assert_array_equal(impulse_run(.8,stage_mix=0),dry)
+print('PASS actual original FX stage mix: 100% preserves original output exactly; 0% bypasses original delay output in the actual DSPChain',flush=True)
+
+from live_source import add_live_parameters
+from stage_mix import StageMix
+bus=add_live_parameters(modules['engine.parameters'].create_default_parameters());bus.set('live.enabled',1)
+for key in ('tape.wow','tape.flutter','tape.hiss','tape.dropout','tape.crinkle','tape.bit8'):bus.set(key,0)
+bus.set('tape.enabled',1);bus.set('tape.saturation',.8)
+chain_a=types.SimpleNamespace(tape=type(chain.tape)(48000))
+audio=np.repeat((np.sin(np.arange(512)*.1)*.2).astype(np.float32)[:,None],2,axis=1)
+print('TAPE SIGNATURE',type(chain_a.tape).process.__code__.co_varnames,type(chain_a.tape).process.__defaults__,flush=True)
+class ObserveNativeTape:
+    def __init__(self,engine):self.engine=engine;self.native_result=None
+    def process(self,audio,parameters,**kwargs):
+        result=self.engine.process(audio,parameters,**kwargs)
+        self.native_result=result.copy()
+        return result
+observer=ObserveNativeTape(chain_a.tape)
+result=StageMix(observer,'live.tape_mix').process(audio.copy(),bus,transport_playing=True)
+np.testing.assert_array_equal(result,observer.native_result)
+bus.set('live.tape_mix',0)
+clean=audio.copy();engine_c=type(chain.tape)(48000)
+np.testing.assert_array_equal(StageMix(engine_c,'live.tape_mix').process(clean,bus,transport_playing=True),audio)
+np.testing.assert_array_equal(impulse_run(0,tape_mix=0,tape_enabled=1),dry)
+print('PASS actual original tape stage mix: 100% preserves original processing; 0% is byte-identical input',flush=True)
 
 # Use the actual original granular wrapper; do not invent native signatures.
 bus=modules['engine.parameters'].create_default_parameters()
@@ -121,6 +156,8 @@ file_source=modules['engine.granular_c'].GranularEngine(sample,p,48000)
 capture=SyntheticCapture()
 sw=SwitchableSource(file_source,p,modules['engine.granular_c'].GranularEngine,lambda:capture)
 full_chain=chain_cls(sw,p,48000);sw.chain=full_chain
+full_chain.fx=StageMix(full_chain.fx,'live.fx_mix');full_chain.tape=StageMix(full_chain.tape,'live.tape_mix')
+p.set('live.fx_mix',.5);p.set('live.tape_mix',.5)
 live_peak=0
 for _ in range(180):
     out=full_chain.render(512)
@@ -184,6 +221,8 @@ for key,value in [('transport.playing',1),('live.enabled',1),('live.mix',1),('gr
 capture=SyntheticCapture()
 sw=SwitchableSource(modules['engine.granular_c'].GranularEngine(sample,p,48000),p,modules['engine.granular_c'].GranularEngine,lambda:capture)
 full_chain=chain_cls(sw,p,48000);sw.chain=full_chain
+full_chain.fx=StageMix(full_chain.fx,'live.fx_mix');full_chain.tape=StageMix(full_chain.tape,'live.tape_mix')
+p.set('live.fx_mix',.5);p.set('live.tape_mix',.5)
 old_ctx=mp.get_context;old_thread=threading.Thread;old_app_path=worker_module.app_path
 worker_module.app_path=lambda name:Path('/workspace/arm-dsp-lab')/name
 try:

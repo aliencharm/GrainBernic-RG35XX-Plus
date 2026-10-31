@@ -4,6 +4,9 @@ import types
 import weakref
 import numpy as np
 from live_source import SwitchableSource,ArecordCapture,add_live_parameters
+from stage_mix import StageMix
+
+MIX_CONTROLS=(('GRANULAR MIX','live.mix'),('FX MIX','live.fx_mix'),('TAPE MIX','live.tape_mix'))
 
 class LiveController:
     def __init__(self,main,config,capture_factory=None):
@@ -12,6 +15,7 @@ class LiveController:
         self.initialized=False;self.sources=weakref.WeakSet()
         self.record_monitor=None;self.record_worker=None
         self.live_output_restore=None
+        self.mix_selection=0
     def configure_live_output(self,audio):
         self.restore_live_output()
         names=('low_latency_buffer_frames','low_latency_period_frames','low_latency_pipe_bytes')
@@ -62,7 +66,7 @@ class LiveController:
         main.audio.device=pcm
         worker.request_audio_device(pcm)
         worker.start();main.record_mode='ready'
-        self.message='LIVE ON - L/R MIX - Y FREEZE'
+        self.message='LIVE ON - UP/DOWN SELECT MIX'
         print('ORIGINAL LIVE START:',self.config,flush=True)
     def stop_live(self):
         worker=getattr(self.main,'audio_worker',None)
@@ -94,6 +98,9 @@ class LiveController:
                 self.main.record_mode='browser'
                 return False
             if ready and self.mode=='LIVE':
+                if action in ('UP','DOWN'):
+                    if value!=0:self.mix_selection=(self.mix_selection+(1 if action=='DOWN' else -1))%len(MIX_CONTROLS)
+                    return True
                 if action=='A':
                     if value!=0 and (not self.active() or not self.main.audio_worker or not self.main.audio_worker.running):
                         try:self.start_live()
@@ -112,7 +119,8 @@ class LiveController:
                 if action in ('LEFT','RIGHT'):
                     if value!=0:
                         step=.05*(1 if action=='RIGHT' else -1)
-                        self.bus().set('live.mix',self.bus().get('live.mix')+step)
+                        key=MIX_CONTROLS[self.mix_selection][1]
+                        self.bus().set(key,self.bus().get(key)+step)
                     return True
             return original(action,value)
         self.main.handle_record_action=handle
@@ -177,7 +185,7 @@ class LiveController:
                 remaining.append((action,value));continue
             if value==0:continue
             if not self.main.record_denoise_available():
-                self.message='DENOISE UNAVAILABLE FOR THIS RECORDING'
+                self.message='DENOISE UNAVAILABLE: BUILT-IN MIC ONLY'
                 print('REC DENOISE UNAVAILABLE',flush=True)
                 continue
             self.main.change_record_denoise(-5 if action=='L2' else 5)
@@ -195,16 +203,22 @@ class LiveController:
         status='RUNNING' if self.active() and self.main.audio_worker and self.main.audio_worker.running else 'STOPPED'
         if status=='RUNNING' and self.bus().get('transport.playing')<.5:status='PAUSED'
         ui.text(status,55,292,3)
-        ui.text('WET MIX  '+str(round(self.bus().get('live.mix')*100))+'%',55,350,3)
-        ui.text('FREEZE  '+('ON' if self.bus().get('live.freeze')>=.5 else 'OFF'),55,405,3)
-        ui.text('ORIGINAL GRAIN / FX / TAPE CHAIN',55,475,2)
-        ui.text(self.message[:72].upper(),55,530,2)
+        for index,(label,key) in enumerate(MIX_CONTROLS):
+            selected=index==self.mix_selection
+            value=self.bus().get(key);cx=200+index*310
+            color=ui.ACCENT if selected else (230,230,230)
+            ui.text(label,cx-len(label)*9,335,3,color)
+            ui._draw_comp_knob(cx,430,62,value,selected)
+            text=str(round(value*100))+'%'
+            ui.text(text,cx-len(text)*9,510,3,color)
+        ui.text('FREEZE  '+('ON' if self.bus().get('live.freeze')>=.5 else 'OFF'),55,580,2)
     def draw_live_footer(self,ui):
         import pygame
         pygame.draw.rect(ui.screen,ui.screen.get_at((0,200))[:3],(36,704,955,64))
-        ui.text('L/R MIX   Y FREEZE',38,728,2)
-        ui.text('A START LIVE',480,728,2,ui.ACCENT)
-        ui.text('B STOP/BACK',820,728,2)
+        ui.text('UP/DOWN SELECT   L/R MIX',38,704,2)
+        ui.text('Y FREEZE',38,738,2)
+        ui.text('A START LIVE',480,738,2,ui.ACCENT)
+        ui.text('B STOP/BACK',820,738,2)
 
 
 def install_at_boot(main,config,capture_factory=None,shared_storage=True):
@@ -233,6 +247,8 @@ def install_at_boot(main,config,capture_factory=None,shared_storage=True):
         source=SwitchableSource(granular,parameters,main.GranularEngine,controller.capture_factory,rate=output_rate,storage=storage)
         source._shared_storage=raw
         original_chain_init(self,source,parameters,output_rate)
+        self.fx=StageMix(self.fx,'live.fx_mix')
+        self.tape=StageMix(self.tape,'live.tape_mix')
         source.chain=weakref.proxy(self);self._v4_live_source=source;controller.sources.add(source)
     chain_cls.__init__=chain_init
     original_chain_render=chain_cls.render
@@ -276,7 +292,7 @@ def install_at_boot(main,config,capture_factory=None,shared_storage=True):
         if args[0].current_tab=='SAMPLE' and getattr(main,'record_mode',None)=='edit' and not getattr(self,'info_mode',False):
             import pygame
             pygame.draw.rect(self.screen,self.screen.get_at((0,200))[:3],(36,695,955,24))
-            hint='L2 / R2 DENOISE - / +' if main.record_denoise_available() else 'DENOISE UNAVAILABLE FOR THIS RECORDING'
+            hint='L2 / R2 DENOISE - / +' if main.record_denoise_available() else 'DENOISE: BUILT-IN MIC ONLY / USB UNAVAILABLE'
             self.text(hint,38,695,2,self.ACCENT)
         if controller.mode=='LIVE' and args[0].current_tab=='SAMPLE' and self.record_mode=='ready' and not getattr(self,'info_mode',False):
             controller.draw_live_footer(self)
