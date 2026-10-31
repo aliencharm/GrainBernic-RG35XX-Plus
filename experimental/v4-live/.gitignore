@@ -1,0 +1,7 @@
+build/
+__pycache__/
+package/grainbrick-v4-live/v4-live
+package/grainbrick-v4-live/*.log
+package/grainbrick-v4-live/buttons.json
+package/grainbrick-v4-live/config.json
+package/grainbrick-v4-live/.lock

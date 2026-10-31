@@ -1,0 +1,5 @@
+{
+  "capture": "hw:CARD=DR40X,DEV=0",
+  "playback": "hw:CARD=DR40X,DEV=0",
+  "latency_us": 24000
+}

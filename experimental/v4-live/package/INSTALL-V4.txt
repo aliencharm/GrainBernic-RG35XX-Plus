@@ -1,0 +1,96 @@
+GrainBrick V4 Live experimental 0.1.0 — RG35XX Plus / KNULLI
+==========================================================
+This is an independent live granular audio prototype, not an update to the
+closed GrainBrick engine. Hardware operation and latency are UNVERIFIED.
+It has its own small control screen. V3 sample playback, projects, ORBIX and
+other effects remain available by exiting V4 and launching V3 as before.
+
+INSTALL
+1. Keep your working V3 installation. Close V3 before starting V4.
+2. Extract this archive. Copy ONLY these two items to /userdata/roms/ports/:
+     GrainBrick V4 Live.sh
+     grainbrick-v4-live/                  (the entire directory)
+   Do not copy anything into grainbrick-beta or replace its launcher.
+3. Connect the Tascam DR-40X in USB audio-interface mode (PC/Mac).
+   Disable the Tascam's direct monitoring so you hear the host signal.
+   Set headphone volume low before testing.
+4. Refresh the PORTS list; launch GrainBrick V4 Live.
+5. Press A to start. Every start resets wet mix to 0 and output gain to 0.5.
+   First verify that playing the synth produces clear dry audio.
+6. D-pad up/down selects a parameter. Left/right adjusts it.
+   Increase Wet mix gradually, then try Pitch ratio around 0.75 or 1.25.
+   B stops audio. START exits V4. Keyboard: Enter starts, B stops, Esc exits.
+
+CONTROLLER
+V4 reads the existing V3 gb_buttons.json calibration without modifying it.
+If no calibration exists, V4 asks for A, B, START and D-pad directions and
+saves a separate buttons.json in its own directory. Delete ONLY that V4
+buttons.json to recalibrate; V3 calibration continues to take precedence
+unless the V4 file exists. No analog sticks are required.
+
+DEVICE SELECTION / FORMAT
+Auto-detection requires exactly one Tascam/DR-40 USB card with both capture
+and playback device 0. It never falls back to internal speakers or another
+USB card. The prototype requests 48000 Hz, stereo, S16_LE and rejects a
+different negotiated rate/format.
+
+If detection/configuration fails, copy config.example.json to config.json
+inside grainbrick-v4-live. Set BOTH capture and playback to the actual ALSA
+card ID shown in v4-diagnostics.txt. DR40X in the example is a placeholder.
+Example: hw:CARD=YourActualID,DEV=0
+If the hardware rejects the format, an explicit conversion fallback is:
+         plughw:CARD=YourActualID,DEV=0
+Set both names to plughw for this fallback. Do not change the system default.
+If sound crackles, stop audio, change latency_us from 24000 to 48000 in
+config.json and restart. This trades more buffering for resilience. The value
+is a requested ALSA buffer duration, not measured end-to-end latency.
+
+WHAT THE CONTROLS DO
+Wet mix: 0 = dry input, 1 = granular output; smoothed linear mix.
+Output gain: 0..1, default 0.5, with bounded output and startup/shutdown fades.
+Grain ms: 10..250. Four overlapping Hann-windowed grains on average.
+History delay ms: 10..1000. Each grain additionally starts far enough behind
+the writer for its duration/pitch, plus up to 100 ms of random scatter.
+Pitch ratio: 0.5..2.0. 1.0 preserves pitch; other values create obvious texture.
+Wet output is intentionally delayed; at defaults its history read starts
+roughly 200–300 ms behind the writer, plus ALSA/USB latency. Dry monitoring
+has no intentional granular delay. This prototype has no dry-delay alignment.
+
+Input continuously replaces old audio in a four-second RAM ring buffer.
+No recording, saving, loading, or fixed-loop stage is used. Incoming audio
+is never written to an audio file. No V3 files or samples are modified.
+
+FIRST HARDWARE TEST / REPORT
+Test dry audio before wet. Then increase mix, change pitch and play different
+notes to verify that NEW input keeps entering the granular sound. Stop the
+synth and check that old material disappears rather than looping forever.
+Try 30 minutes of playing, then stop/exit V4 and confirm V3 still works.
+Report audible delay, crackles, channel problems and the settings used.
+
+Send these files from grainbrick-v4-live/:
+  v4-audio.log       ALSA settings, DSP timings, mix, errors and recoveries
+  v4-diagnostics.txt  hardware listing (generated each UI startup)
+  v4-ui.log          frontend errors / failed device detection
+If the device disconnects or capture stalls, V4 stops; reconnect and press A.
+Capture/playback XRUNs are recovered together, with at most 20 recoveries per
+start. Recovery clears history, fades back in and retains selected parameters.
+The log's dsp_max_ms measures DSP work only, not full round-trip latency.
+
+ROLLBACK
+Exit V4 and use V3 normally. To remove V4, delete ONLY GrainBrick V4 Live.sh
+and grainbrick-v4-live/. No system configuration changes need undoing.
+
+COMPATIBILITY / LIMITS
+The package contains a native ARM64 executable, system-ALSA dependency,
+and a Python/Pygame UI. No NumPy dependency, bundled ALSA or proprietary
+GrainBrick binaries. Binary requires glibc 2.34+; the supplied V3 native
+module already requires glibc 2.38. Hardware USB duplex behavior, scheduling,
+controller/display behavior and latency remain to be validated on KNULLI.
+Do not run V3 and V4 together. The UI checks for a running gb_launch.py, but
+cannot detect every possible renamed launcher or other audio application.
+The prototype uses a single audio thread and periodic diagnostic writes;
+it does not claim hard real-time scheduling. USB clock drift compensation
+is not implemented: capture/output should use the SAME physical Tascam.
+The built-in limiter is a hard output bound, not a mastering limiter.
+
+Source, tests and build instructions are included under grainbrick-v4-live/source/.
