@@ -1,7 +1,25 @@
-GrainBrick V4 Live experimental 0.1.0 — RG35XX Plus / KNULLI
+GrainBrick V4 Live experimental 0.1.1 — RG35XX Plus / KNULLI
 ==========================================================
 This is an independent live granular audio prototype, not an update to the
-closed GrainBrick engine. Hardware operation and latency are UNVERIFIED.
+closed GrainBrick engine. The preceding 0.1.0 version was tested by the user
+with Tascam input/output, live controls and acceptable delay at short grains.
+The new 0.1.1 zero-scatter behavior still requires a handheld listening test.
+
+UPGRADING FROM V4 0.1.0
+Exit V4 completely before copying. Overlay this package's V4 files onto the
+existing grainbrick-v4-live directory; do not delete that directory. Keep
+your working config.json (plughw:CARD=Series,DEV=0 for both directions),
+buttons.json and logs. The ZIP contains no config.json or calibration file.
+Replace BOTH frontend.py and v4-live, not just the launcher. The title and
+new audio log entries should identify 0.1.1. Existing V3 is untouched.
+
+FIRST 0.1.1 LISTENING TEST
+Press A, then raise Wet mix to 1.00. Defaults are Grain=20 ms, Delay=10 ms,
+Pitch=1.00, Scatter=0 ms. Compare the voice with Wet=0, then Wet=1. Keep
+Tascam direct monitoring disabled. After comparing, increase Scatter ms to
+50 or 100 to hear the previous randomized-grain texture. Report whether
+zero scatter improves the lower/thicker sound, and send the new audio log.
+Scatter=100 matches the old scatter amount, but not its old startup settings.
 It has its own small control screen. V3 sample playback, projects, ORBIX and
 other effects remain available by exiting V4 and launching V3 as before.
 
@@ -50,10 +68,13 @@ Wet mix: 0 = dry input, 1 = granular output; smoothed linear mix.
 Output gain: 0..1, default 0.5, with bounded output and startup/shutdown fades.
 Grain ms: 10..250. Four overlapping Hann-windowed grains on average.
 History delay ms: 10..1000. Each grain additionally starts far enough behind
-the writer for its duration/pitch, plus up to 100 ms of random scatter.
+the writer for its duration/pitch, plus the selected random scatter.
 Pitch ratio: 0.5..2.0. 1.0 preserves pitch; other values create obvious texture.
+Scatter ms: 0..100; default 0. Random extra lookback per grain. At zero and
+pitch 1 with fixed parameters, overlapping grains reproduce one delayed
+waveform; at higher scatter they combine different moments and color sound.
 Wet output is intentionally delayed; at defaults its history read starts
-roughly 200–300 ms behind the writer, plus ALSA/USB latency. Dry monitoring
+about 30 ms behind the writer, plus ALSA/USB latency. Dry monitoring
 has no intentional granular delay. This prototype has no dry-delay alignment.
 
 Input continuously replaces old audio in a four-second RAM ring buffer.
@@ -68,7 +89,7 @@ Try 30 minutes of playing, then stop/exit V4 and confirm V3 still works.
 Report audible delay, crackles, channel problems and the settings used.
 
 Send these files from grainbrick-v4-live/:
-  v4-audio.log       ALSA settings, DSP timings, mix, errors and recoveries
+  v4-audio.log       ALSA settings, DSP timings, mix, scatter, errors and recoveries
   v4-diagnostics.txt  hardware listing (generated each UI startup)
   v4-ui.log          frontend errors / failed device detection
 If the device disconnects or capture stalls, V4 stops; reconnect and press A.
@@ -84,8 +105,8 @@ COMPATIBILITY / LIMITS
 The package contains a native ARM64 executable, system-ALSA dependency,
 and a Python/Pygame UI. No NumPy dependency, bundled ALSA or proprietary
 GrainBrick binaries. Binary requires glibc 2.34+; the supplied V3 native
-module already requires glibc 2.38. Hardware USB duplex behavior, scheduling,
-controller/display behavior and latency remain to be validated on KNULLI.
+module already requires glibc 2.38. Long-duration USB duplex stability, precise latency and the new zero-scatter
+voice behavior still need validation on KNULLI.
 Do not run V3 and V4 together. The UI checks for a running gb_launch.py, but
 cannot detect every possible renamed launcher or other audio application.
 The prototype uses a single audio thread and periodic diagnostic writes;

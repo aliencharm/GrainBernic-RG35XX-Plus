@@ -10,8 +10,8 @@ import time
 ROOT = Path(__file__).resolve().parent
 PARAMS = [('mix', 'Wet mix', 0., 1., .05), ('gain', 'Output gain', 0., 1., .05),
           ('grain', 'Grain ms', 10., 250., 10.), ('delay', 'History delay ms', 10., 1000., 10.),
-          ('pitch', 'Pitch ratio', .5, 2., .05)]
-DEFAULTS = {'mix': 0., 'gain': .5, 'grain': 80., 'delay': 120., 'pitch': 1.}
+          ('pitch', 'Pitch ratio', .5, 2., .05), ('scatter', 'Scatter ms', 0., 100., 5.)]
+DEFAULTS = {'mix': 0., 'gain': .5, 'grain': 20., 'delay': 10., 'pitch': 1., 'scatter': 0.}
 
 
 def candidates(asound=Path('/proc/asound')):
@@ -86,7 +86,7 @@ def translate(ev, mapping, pg):
 
 
 def diagnostics():
-    lines = ['GrainBrick V4 Live experimental 0.1.0', platform.platform(),
+    lines = ['GrainBrick V4 Live experimental 0.1.1', platform.platform(),
              'Python ' + platform.python_version()]
     for path in ['/proc/asound/cards','/proc/asound/pcm','/proc/asound/version']:
         lines.append('=== ' + path)
@@ -260,7 +260,7 @@ def main():
                 for start in range(0,len(text),66 if small_font else 55):
                     screen.blit(f.render(text[start:start+(66 if small_font else 55)],True,color),(20,y))
                     y += 22
-            draw('GrainBrick V4 LIVE - experimental 0.1',18,(100,220,190))
+            draw('GrainBrick V4 LIVE - experimental 0.1.1',18,(100,220,190))
             draw('Independent engine / V3 stays unchanged',48,small_font=True)
             if calibration:
                 draw('V4 controller setup (saved separately)',110)
@@ -269,7 +269,7 @@ def main():
             else:
                 for i,(key,label,_,_,_) in enumerate(PARAMS):
                     text = f'{">" if selected==i else " "} {label}: {params[key]:.2f}'
-                    draw(text,90+i*37,(255,213,100) if selected==i else (218,226,231))
+                    draw(text,85+i*31,(255,213,100) if selected==i else (218,226,231))
                 draw(status,288,(100,220,190),True)
                 draw(device_label,338,small_font=True)
                 draw('D-pad: select/change | A: start | B: stop',402,small_font=True)

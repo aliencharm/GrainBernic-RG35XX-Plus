@@ -55,6 +55,7 @@ static void controls(Dsp *d) {
     if(!strcmp(key,"gain")&&v>=0&&v<=1) d->target_gain=v;
     if(!strcmp(key,"grain")&&v>=10&&v<=250) d->grain_ms=v;
     if(!strcmp(key,"delay")&&v>=10&&v<=1000) d->delay_ms=v;
+    if(!strcmp(key,"scatter")&&v>=0&&v<=100) d->scatter_ms=v;
     if(!strcmp(key,"pitch")&&v>=.5f&&v<=2) d->pitch=v;
    }
    used=0;
@@ -74,11 +75,11 @@ static int transfer(snd_pcm_t *pcm,int16_t *data,unsigned frames,int capture) {
  return stop ? -EINTR : 0;
 }
 int main(int argc,char **argv) {
- if(argc==2 && !strcmp(argv[1],"--version")) { puts("GrainBrick V4 Live experimental 0.1.0 / independent ALSA DSP"); return 0; }
- if(argc<3 || argc>4) { fprintf(stderr,"Usage: %s CAPTURE_PCM PLAYBACK_PCM [latency_us:10000..100000]\nControls on stdin: mix 0..1, gain 0..1, grain 10..250, delay 10..1000, pitch .5..2, quit\n",argv[0]); return 2; }
+ if(argc==2 && !strcmp(argv[1],"--version")) { puts("GrainBrick V4 Live experimental 0.1.1 / independent ALSA DSP"); return 0; }
+ if(argc<3 || argc>4) { fprintf(stderr,"Usage: %s CAPTURE_PCM PLAYBACK_PCM [latency_us:10000..100000]\nControls on stdin: mix 0..1, gain 0..1, grain 10..250, delay 10..1000, pitch .5..2, scatter 0..100, quit\n",argv[0]); return 2; }
  unsigned latency=24000;
  if(argc==4) { char *end; unsigned long value=strtoul(argv[3],&end,10); if(*end || value<10000 || value>100000) return 2; latency=(unsigned)value; }
- fprintf(stderr,"V4 0.1.0 capture=%s playback=%s block=128 pid=%ld\n",argv[1],argv[2],(long)getpid());
+ fprintf(stderr,"V4 0.1.1 capture=%s playback=%s block=128 pid=%ld\n",argv[1],argv[2],(long)getpid());
  if(load_alsa()<0) return 1;
  signal(SIGINT,on_signal); signal(SIGTERM,on_signal); signal(SIGPIPE,SIG_IGN);
  int flags=fcntl(STDIN_FILENO,F_GETFL); if(flags>=0) fcntl(STDIN_FILENO,F_SETFL,flags|O_NONBLOCK);
@@ -105,7 +106,7 @@ int main(int argc,char **argv) {
   e=transfer(play,output,128,0); if(e<0) goto recover;
   frames+=128;
   if(now()-report>=2.) {
-   fprintf(stderr,"STATS frames=%llu recoveries=%u dsp_max_ms=%.3f peak=%.3f mix=%.2f grain_ms=%.0f delay_ms=%.0f pitch=%.2f\n",(unsigned long long)frames,recoveries,max_dsp*1000,peak,dsp.mix,dsp.grain_ms,dsp.delay_ms,dsp.pitch);
+   fprintf(stderr,"STATS frames=%llu recoveries=%u dsp_max_ms=%.3f peak=%.3f mix=%.2f grain_ms=%.0f delay_ms=%.0f pitch=%.2f scatter_ms=%.0f\n",(unsigned long long)frames,recoveries,max_dsp*1000,peak,dsp.mix,dsp.grain_ms,dsp.delay_ms,dsp.pitch,dsp.scatter_ms);
    report=now(); max_dsp=0; peak=0;
   }
   continue;
@@ -116,9 +117,9 @@ int main(int argc,char **argv) {
   p_snd_pcm_drop(cap); p_snd_pcm_drop(play);
   if(p_snd_pcm_prepare(cap)<0 || p_snd_pcm_prepare(play)<0) goto end;
   /* Both queues reset together; discard stale history and fade back in. */
-  float mix=dsp.target_mix,gain=dsp.target_gain,grain=dsp.grain_ms,delay=dsp.delay_ms,pitch=dsp.pitch;
+  float mix=dsp.target_mix,gain=dsp.target_gain,grain=dsp.grain_ms,delay=dsp.delay_ms,pitch=dsp.pitch,scatter=dsp.scatter_ms;
   dsp_free(&dsp); if(dsp_init(&dsp)<0) goto end;
-  dsp.target_mix=mix; dsp.target_gain=gain; dsp.grain_ms=grain; dsp.delay_ms=delay; dsp.pitch=pitch;
+  dsp.target_mix=mix; dsp.target_gain=gain; dsp.grain_ms=grain; dsp.delay_ms=delay; dsp.pitch=pitch; dsp.scatter_ms=scatter;
   frames=0;
  }
  if(play && frames) {

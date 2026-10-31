@@ -23,10 +23,12 @@ with tempfile.TemporaryDirectory() as d:
    time.sleep(.01)
   time.sleep(.1); key(pg.K_RETURN)
   time.sleep(.2); key(pg.K_RIGHT)
+  time.sleep(.1); key(pg.K_UP)
+  time.sleep(.1); key(pg.K_RIGHT)
   time.sleep(2.2); key(pg.K_b)
   time.sleep(.2); key(pg.K_ESCAPE)
  thread=threading.Thread(target=interact,daemon=True); thread.start()
  f.main(); thread.join(timeout=2)
  log=(f.ROOT/'v4-audio.log').read_text()
- assert 'STATS' in log and 'mix=0.05' in log and 'EXIT status=0' in log,log
- print('PASS full headless UI start, live wet control, stats, stop and exit')
+ assert 'STATS' in log and 'mix=0.05' in log and 'scatter_ms=5' in log and 'grain_ms=20 delay_ms=10' in log and 'EXIT status=0' in log,log
+ print('PASS full headless UI start, live wet/scatter controls, default settings, stats, stop and exit')

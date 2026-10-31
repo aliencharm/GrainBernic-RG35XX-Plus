@@ -15,6 +15,12 @@ class FrontendTests(unittest.TestCase):
    card=root/'card2'; card.mkdir(); (card/'id').write_text('DR40X'); (card/'usbid').touch(); (card/'pcm0c').mkdir()
    self.assertEqual(f.candidates(root),[])
    (card/'pcm0p').mkdir(); self.assertEqual(f.candidates(root),['hw:CARD=DR40X,DEV=0'])
+ def test_scatter_default_and_range(self):
+  self.assertEqual(f.DEFAULTS['scatter'],0.)
+  self.assertEqual(f.DEFAULTS['grain'],20.)
+  self.assertEqual(f.DEFAULTS['delay'],10.)
+  scatter=[p for p in f.PARAMS if p[0]=='scatter']
+  self.assertEqual(scatter,[('scatter','Scatter ms',0.,100.,5.)])
  def test_config_requires_both_devices(self):
   old=f.ROOT
   try:

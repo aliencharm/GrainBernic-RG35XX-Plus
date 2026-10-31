@@ -5,6 +5,9 @@ Existing V3 files are untouched. See [installation and hardware test guide](pack
 
 `src/dsp.c` implements a four-second stereo ring, bounded overlapping grains,
 linear interpolated reads, Hann windows, scattered lookback and pitch ratios.
+Scatter is adjustable from 0 to 100 ms and defaults to zero. At unity pitch
+and fixed grain/delay, zero scatter preserves a delayed waveform without
+random phase offsets. Startup defaults are 20 ms grains and 10 ms delay.
 The capture writer and grain readers run in the same thread, so no ring locks
 or concurrent engine-buffer mutation are needed. Each grain reads initialized,
 non-overwritten history behind the writer. Memory is allocated before streaming.
@@ -57,3 +60,14 @@ retaining address/undefined-behavior checks, and record that limitation.
 
 Offline and emulated checks do not establish real-time hardware readiness.
 Consult VALIDATION.md for the exact checks executed for this package.
+
+## Package 0.1.1
+
+From this directory, after cross compiling:
+
+```sh
+python3 tools/package.py --binary build/arm64/v4-live --output GrainBrick_V4_0.1.1.zip
+```
+
+Overlay the installed V4 files after exiting the app. Preserve config.json,
+buttons.json and logs. See INSTALL-V4.txt in the archive for the listening test.

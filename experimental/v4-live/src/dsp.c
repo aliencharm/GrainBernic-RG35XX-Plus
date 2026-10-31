@@ -5,7 +5,7 @@
 int dsp_init(Dsp *d) {
  memset(d,0,sizeof(*d)); d->ring=calloc(V4_HISTORY*2,sizeof(float));
  d->rng=0x91a32u; d->gain=d->target_gain=0.5f;
- d->grain_ms=80; d->delay_ms=120; d->pitch=1.0f;
+ d->grain_ms=20; d->delay_ms=10; d->pitch=1.0f;
  return d->ring ? 0 : -1;
 }
 void dsp_free(Dsp *d) { free(d->ring); d->ring=NULL; }
@@ -20,7 +20,7 @@ void dsp_frame(Dsp *d,const float input[2],float out[2]) {
   if(length<480) length=480;
   if(length>12000) length=12000;
   float speed=fminf(2.f,fmaxf(0.5f,d->pitch));
-  double lookback=fmax(480.,d->delay_ms*48.)+length*fmax(1.,speed)+random01(d)*4800.;
+  double lookback=fmax(480.,d->delay_ms*48.)+length*fmax(1.,speed)+random01(d)*fminf(100.f,fmaxf(0.f,d->scatter_ms))*48.;
   if(d->written>(uint64_t)ceil(lookback)+2) {
    for(int i=0;i<V4_VOICES;i++) if(!d->grains[i].active) {
     d->grains[i]=(Grain){.pos=(double)d->written-lookback,.length=length,.speed=speed,.active=1}; break;

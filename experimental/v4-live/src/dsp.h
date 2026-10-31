@@ -7,7 +7,7 @@
 typedef struct { double pos; unsigned age, length; float speed; int active; } Grain;
 typedef struct {
  float *ring; uint64_t written; unsigned countdown; uint32_t rng;
- float mix, target_mix, gain, target_gain, grain_ms, delay_ms, pitch;
+ float mix, target_mix, gain, target_gain, grain_ms, delay_ms, pitch, scatter_ms;
  Grain grains[V4_VOICES];
 } Dsp;
 int dsp_init(Dsp *d);
