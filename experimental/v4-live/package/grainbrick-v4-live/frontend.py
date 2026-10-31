@@ -104,14 +104,18 @@ def diagnostics():
     (ROOT / 'v4-diagnostics.txt').write_text('\n'.join(lines))
 
 
-def main():
+def main(renderer_factory=None):
     import fcntl
+    with (ROOT / '.lock').open('a') as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise SystemExit('V4 is already running')
+        return _run(renderer_factory)
+
+
+def _run(renderer_factory):
     import signal
-    lock = (ROOT / '.lock').open('a')
-    try:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError:
-        raise SystemExit('V4 is already running')
     def interrupted(signum, frame):
         raise KeyboardInterrupt
     signal.signal(signal.SIGTERM, interrupted)
@@ -124,7 +128,13 @@ def main():
     joys = [pg.joystick.Joystick(i) for i in range(pg.joystick.get_count())]
     for j in joys:
         j.init()
-    screen = pg.display.set_mode((640,480), pg.FULLSCREEN)
+    renderer = None
+    try:
+        renderer = renderer_factory(ROOT,pg) if renderer_factory else None
+        screen = renderer.screen if renderer else pg.display.set_mode((640,480), pg.FULLSCREEN)
+    except BaseException:
+        pg.quit()
+        raise
     pg.mouse.set_visible(False)
     font = pg.font.Font(None,27)
     small = pg.font.Font(None,23)
@@ -146,7 +156,7 @@ def main():
     log_offset = 0
 
     def stop_audio():
-        nonlocal child, log, log_read, status
+        nonlocal child, log, log_read, status, latest
         if child:
             if child.poll() is None:
                 try:
@@ -165,6 +175,7 @@ def main():
         if log_read:
             log_read.close(); log_read = None
         status = 'Stopped. A starts dry monitoring.'
+        latest = ''
 
     try:
         while running:
@@ -234,6 +245,7 @@ def main():
                                                  stdin=subprocess.PIPE,stdout=log,stderr=log,text=True)
                         params = DEFAULTS.copy()  # Every start defaults to dry and half gain.
                         status = 'Starting audio...'
+                        latest = ''
                     except (OSError,ValueError) as exc:
                         stop_audio()
                         status = str(exc)
@@ -253,34 +265,46 @@ def main():
                     code = child.returncode
                     stop_audio()
                     status = f'Audio exited ({code}); see v4-audio.log'
-            screen.fill((14,19,25))
+            screen.fill((0,0,0) if renderer else (14,19,25))
             def draw(text,y,color=(218,226,231),small_font=False):
+                if renderer:
+                    renderer.draw_text(text,y,color,small_font)
+                    return
                 # Wrap long device names/errors so useful diagnostics remain visible.
                 f = small if small_font else font
                 for start in range(0,len(text),66 if small_font else 55):
                     screen.blit(f.render(text[start:start+(66 if small_font else 55)],True,color),(20,y))
                     y += 22
-            draw('GrainBrick V4 LIVE - experimental 0.1.1',18,(100,220,190))
-            draw('Independent engine / V3 stays unchanged',48,small_font=True)
+            if renderer:
+                renderer.draw_header(child is not None and child.poll() is None)
+            else:
+                draw('GrainBrick V4 LIVE - experimental 0.1.1',18,(100,220,190))
+                draw('Independent engine / V3 stays unchanged',48,small_font=True)
             if calibration:
                 draw('V4 controller setup (saved separately)',110)
                 draw('Press '+calibration[cap_step],160,(255,213,100))
                 draw('For D-pad, press the indicated direction.',210,small_font=True)
             else:
-                for i,(key,label,_,_,_) in enumerate(PARAMS):
-                    text = f'{">" if selected==i else " "} {label}: {params[key]:.2f}'
-                    draw(text,85+i*31,(255,213,100) if selected==i else (218,226,231))
-                draw(status,288,(100,220,190),True)
-                draw(device_label,338,small_font=True)
-                draw('D-pad: select/change | A: start | B: stop',402,small_font=True)
-                draw('START: exit | Disable Tascam direct monitoring',428,small_font=True)
-                draw('Start at low headphone volume. No audio files saved.',452,small_font=True)
+                if renderer:
+                    renderer.draw_parameters(params,selected)
+                    renderer.draw_footer(status,device_label,latest)
+                else:
+                    for i,(key,label,_,_,_) in enumerate(PARAMS):
+                        text = f'{">" if selected==i else " "} {label}: {params[key]:.2f}'
+                        draw(text,85+i*31,(255,213,100) if selected==i else (218,226,231))
+                    draw(status,288,(100,220,190),True)
+                    draw(device_label,338,small_font=True)
+                    draw('D-pad: select/change | A: start | B: stop',402,small_font=True)
+                    draw('START: exit | Disable Tascam direct monitoring',428,small_font=True)
+                    draw('Start at low headphone volume. No audio files saved.',452,small_font=True)
             pg.display.flip()
             clock.tick(30)
     except KeyboardInterrupt:
         pass
     finally:
         stop_audio()
+        if renderer:
+            renderer.close()
         pg.quit()
 
 if __name__ == '__main__':

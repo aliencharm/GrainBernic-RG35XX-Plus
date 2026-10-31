@@ -89,3 +89,19 @@ init, process spawning and path-write guards remain blocked. If video is
 unavailable, graphics is skipped while class results remain available.
 No audio-engine or V3 application startup was added. Eleven host fixture
 tests passed, including missing-dummy fallback and graphics failure isolation.
+
+## 0.3 handheld report received
+
+All reported compatibility checks passed. Parameter setter interception ran
+once and produced 0.75; renderer class replacement was visible through the
+main alias. Dummy video was unavailable, but platform-default `mali` worked.
+The original UIEngine constructor, tabs and placeholder rendered to a
+1024x768 virtual canvas with the proven 640x480 display adapter.
+
+The next package implements an independent LIVE page with those original
+classes/font/tab bar and the original compressor knob widget. It retains
+class modules after the same guarded import boundary and never resumes
+original main or constructs an original AudioWorker. Audio remains the
+known standalone V4 child. Sample/FX/ORBIX remain in the unchanged V3 app.
+The new combined native widget + live-engine frontend needs a handheld test;
+fixture and host ALSA-null integration checks passed. See original-ui/.
