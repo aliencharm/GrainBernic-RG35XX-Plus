@@ -1,109 +1,54 @@
-# GrainBernik
+# GrainBernic — RG35XX Plus
 
-**GrainBernik** is an unofficial fork of [ETRNLIAM/GrainBrick](https://github.com/ETRNLIAM/GrainBrick) for the **Anbernic RG40XX H** (640×480) running KNULLI.
+An unofficial compatibility port of [GrainBrick](https://github.com/ETRNLIAM/GrainBrick) for the **Anbernic RG35XX Plus**, running **KNULLI Scarab 20260511**.
 
-GrainBrick draws its interface for the TrimUI Brick screen (1024×768). On a 640×480 screen you only see the top-left part of it. This fork adds a small launcher patch: the app keeps drawing at 1024×768 off-screen, and every frame is scaled down to the real screen. Both screens are 4:3, so the picture fills the whole display.
+Based on the [GrainBernik RG40XX H compatibility patch](https://github.com/AlekseyMalykh/GrainBernik) by AlekseyMalykh.
 
-The patch does not modify or redistribute the closed GrainBrick application: you still need the official release ZIP from the original author.
+## Stable V3
 
-> Status: beta. Tested on RG40XX H with KNULLI: screen scaling, buttons, USB audio output and USB recording (Zoom H1n as audio interface).
+The RG35XX Plus V3 compatibility port has been tested with a **Tascam DR-40X USB audio interface**.
 
-## Install on RG40XX H
+Confirmed working:
 
-1. Install the official release as described below (copy `grainbrick-beta/` and `GrainBrick beta 1.0.sh` to `/userdata/roms/ports/`). With the card in a PC, this is the `roms/ports` folder on the SHARE partition.
-2. Copy the files from [`rg40xx-h-patch/grainbrick-beta/`](rg40xx-h-patch/grainbrick-beta/) into `/userdata/roms/ports/grainbrick-beta/`, replacing `gb_launch.py`:
-   - `gb_display_fit.py` — the screen adapter;
-   - `gb_buttons.py` — the button layout adapter;
-   - `gb_audio.py` — the USB recording adapter;
-   - `gb_launch.py` — the original launcher plus a few lines that load the adapters.
-3. Copy [`rg40xx-h-patch/GrainBernik Buttons Setup.sh`](rg40xx-h-patch/) (and optionally `GrainBernik Audio Check.sh`) into `/userdata/roms/ports/`.
-4. Launch GrainBrick from PORTS. On the first launch a short button setup screen appears: press each button it asks for (A, B, X, Y, L1, R1, L2, R2, SELECT, START, MENU, D-pad, then optionally L3/R3 for TAB−/TAB+). Optional steps are skipped automatically after a few seconds.
+- GrainBrick beta 1.0 launches and exits cleanly
+- Display scaling from 1024×768 to 640×480
+- RG35XX Plus controller mapping
+- USB audio playback
+- USB audio recording from microphones and external synthesizers
+- Sample saving, loading and granular processing
+- ORBIX generative synthesizer
+- Sound parameter persistence
 
-### Buttons
+The port uses the original application's bundled NumPy and preloads `pygame.surfarray` to resolve startup compatibility issues.
 
-GrainBrick reads the raw button numbers of the TrimUI Brick, so on other devices the button names in the app's hints don't match the physical buttons. `gb_buttons.py` records your device's layout once (saved to `grainbrick-beta/gb_buttons.json`) and translates every button press into the Brick's numbers. After that the button labelled **A** on the RG40XX H is **A** in GrainBrick, **L1** is **L1**, and so on. D-pad buttons are converted to the D-pad events the app expects; analog L2/R2 triggers are supported.
+## Experimental V4
 
-To redo the setup, run **GrainBernik Buttons Setup** from PORTS (or delete `gb_buttons.json`). Set `GRAINBRICK_BUTTONS=0` to turn the adapter off.
+Development branch: `v4-live-granular-dev`
 
-### USB audio
+**Goal:** Continuous live granular processing of incoming audio using a circular ring buffer, with adjustable software dry/wet monitoring through the USB audio interface.
 
-- **Output** works out of the box: connect a class-compliant USB audio device *before* starting GrainBrick and choose it in the app's OUTPUT setting.
-- **Recording**: GrainBrick records "USB AUDIO" from a fixed device (`hw:1,0`, exactly 48 kHz / 16 bit / stereo), which on the RG40XX H is usually not the USB card and rejects devices with other formats. `gb_audio.py` redirects that recording to the first USB card that can record, through ALSA `plughw`, so sample rate, bit depth and channel count are converted automatically. Choose **USB AUDIO** as the input source on the recording page.
-- The RG40XX H has no built-in microphone, so the BUILT-IN MIC source does not work.
-- Tested with a **Zoom H1n**: micro-USB to USB-C data cable into the OTG port, on the recorder choose *Audio Interface → PC/Mac*. Batteries in the H1n make the connection more reliable.
-- An iPhone cannot be used as a USB sound card on Linux.
-- If a device doesn't show up, run **GrainBernik Audio Check** from PORTS with it connected; it writes `grainbrick-beta/audio_check.txt` with what the system sees.
-- Optional: `GRAINBRICK_USB_IN=plughw:CARD=<id>,DEV=0` forces the capture device, `GRAINBRICK_AUDIO=0` turns the adapter off.
-
-Optional settings (environment variables, can be added to `GrainBrick beta 1.0.sh` before the `python3` line):
-
-| Variable | Values | Meaning |
-|---|---|---|
-| `GRAINBRICK_SCREEN` | e.g. `640x480` | Force the real screen size (default: auto-detect) |
-| `GRAINBRICK_SCALE` | `smooth` / `fast` | Scaling quality. `smooth` is the default and switches to `fast` automatically if the CPU is too slow |
-| `GRAINBRICK_FIT` | `0` | Turn the adapter off |
-
-The launcher log `grainbrick-beta/beta_port_launcher.log` contains a `GB DISPLAY FIT:` line with the detected sizes.
-
-## Установка на RG40XX H (кратко)
-
-Установите официальный релиз в `roms/ports`, затем скопируйте `gb_display_fit.py`, `gb_buttons.py`, `gb_audio.py` и `gb_launch.py` из папки `rg40xx-h-patch/grainbrick-beta/` в `roms/ports/grainbrick-beta/` с заменой, а `GrainBernik Buttons Setup.sh` — в `roms/ports/`. Интерфейс будет уменьшен с 1024×768 до 640×480 на весь экран. При первом запуске появится экран настройки кнопок: нажимайте кнопки, которые он просит. После этого названия кнопок в подсказках приложения совпадут с надписями на приставке. Повторить настройку можно через порт «GrainBernik Buttons Setup». USB-звук: подключите USB-звуковую карту до запуска (проверено с Zoom H1n в режиме Audio Interface → PC/Mac), выберите её в OUTPUT, а для записи — источник USB AUDIO.
-
----
-
-*Original README of GrainBrick below.*
-
-# GrainBrick
-
-A free granular ambient sound instrument for TrimUI Brick.
-
-GrainBrick turns audio samples into evolving, organic textures with granular processing, tape-style sound shaping, effects and the ORBIX generative note engine.
-
-It is designed for hands-on ambient exploration and sound design - not a tracker, sequencer or traditional looper.
-
-## GrainBrick beta 1.0
-
-This is the first public beta for the original TrimUI Brick running KNULLI.
-
-## Features
-
-- Granular sample processing and evolving ambient textures
-- ORBIX generative note engine
-- Reverb, delay, shimmer and other sound-shaping effects
-- Tape-style processing
-- Recording and trimming audio, including the Brick's internal microphone
-- USB audio input/output support on compatible devices
-- Project saving and contextual parameter help
-
-## Download
-
-Open the [original repository's Releases section](https://github.com/ETRNLIAM/GrainBrick/releases) and download:
-
-GrainBrick_beta_1.0_TrimUI_Brick_KNULLI.zip
-
-Do not download GitHub's automatically generated “Source code” ZIP - that is not the application.
-
-## Compatibility
-
-- Tested: original TrimUI Brick with KNULLI
-- Requires a compatible AArch64 KNULLI installation providing Python 3.12, Pygame and NumPy
-- Other handhelds, operating systems and TrimUI Brick Pro have not been confirmed compatible
+V4 is experimental. Live processing is not yet implemented or verified on the RG35XX Plus.
 
 ## Installation
 
-1. Download the release ZIP and extract its contents.
-2. Copy both grainbrick-beta/ and GrainBrick beta 1.0.sh to the Brick's /userdata/roms/ports/ directory.
-3. Refresh your PORTS list in KNULLI.
-4. Launch GrainBrick beta 1.0.
+This repository contains compatibility patches and launch scripts. It does not include the original GrainBrick application.
 
-When upgrading, preserve your own samples, projects, recordings and settings. Do not delete your existing grainbrick-beta/ folder without backing them up.
+1. Obtain the official GrainBrick beta 1.0 release from the original developer.
+2. Install it in `/userdata/roms/ports/grainbrick-beta/`.
+3. Copy the four `gb_*.py` compatibility modules into that directory.
+4. Copy the launcher `.sh` scripts into `/userdata/roms/ports/`.
+5. Launch GrainBrick from KNULLI's Ports menu.
 
-## Feedback
+Tested environment: RG35XX Plus, KNULLI Scarab 20260511, Python 3.12.8, Pygame 2.5.2, Tascam DR-40X.
 
-This is a beta release. Please use the repository's Issues section to report reproducible bugs and hardware compatibility findings, including your OS version and device model.
+## Credits
 
-## Licensing
+- **ETRNLIAM** — Original GrainBrick application and synthesis engine.
+- **AlekseyMalykh** — GrainBernik RG40XX H compatibility patch.
+- **aliencharm** — RG35XX Plus adaptation and testing.
 
-GrainBrick is free to download, but its original application source code is currently closed. An open public beta does not mean that the GrainBrick source code is open source.
+## Disclaimer
 
-The distribution includes notices and applicable source materials for its bundled third-party components, including LGPL-licensed SoundTouch. See THIRD_PARTY_NOTICES.md, THIRD_PARTY_LICENSES/ and THIRD_PARTY_SOURCES/ inside the downloadable release.
+Unofficial community port. Not affiliated with or endorsed by the original GrainBrick developer or Anbernic.
+
+The original GrainBrick application and its closed-source native libraries are not redistributed here.
