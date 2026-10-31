@@ -1,0 +1,1 @@
+/mnt/data/GrainBrick_RG35XX_Plus_Scarab_20260511/GrainBrick RG35XX Plus Buttons Setup.sh
