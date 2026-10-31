@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import runpy
 import sys
-from v4_install import migrate,device_config
+from v4_install import prepare,device_config
 
 
 def main():
@@ -25,10 +25,8 @@ def main():
         for path in locks:
             lock=stack.enter_context(path.open('a'))
             fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-        print('GRAINBRICK V4 FINAL 1.0:',str(app),flush=True)
-        report=migrate(app)
-        if not report['ready_for_cleanup']:
-            print('V4 MIGRATION: keep old folders; external project references are listed in migration-report.json',flush=True)
+        print('GRAINBRICK V4 FINAL 1.1:',str(app),flush=True)
+        prepare(app)
         config=device_config(app/'config.json')
         sys.dont_write_bytecode=True
         os.environ.update(GRAINBRICK_SCREEN='640x480',GRAINBRICK_SCALE='fast',GRAINBRICK_FIT='1',GRAINBRICK_BUTTONS='1',GRAINBRICK_AUDIO='1')

@@ -8,13 +8,15 @@ root=Path(__file__).resolve().parent
 baseline=json.loads((root/'audio-baseline.json').read_text())
 files={'GrainBrick V4.sh':root/'GrainBrick V4.sh','INSTALL-V4.txt':root/'README.md',
        'grainbrick-v4/README_V4.md':root/'README.md',
+       'grainbrick-v4/factory-content.json':root/'factory-content.json',
+       'grainbrick-v4/factory-preset.json':root/'factory-preset.json',
        'grainbrick-v4/v4_entry.py':root/'v4_entry.py','grainbrick-v4/v4_install.py':root/'v4_install.py'}
 for name,expected in baseline['files'].items():
     path=root.parent/'dsp-integration'/name
     assert hashlib.sha256(path.read_bytes()).hexdigest()==expected,'Audio baseline changed: '+name
     files['grainbrick-v4/'+name]=path
-manifest={'version':'1.0','audio_baseline':baseline,'sha256':{name:hashlib.sha256(path.read_bytes()).hexdigest() for name,path in files.items()}}
-release=root.parent/'releases/GrainBrick_V4_Final_1.0.zip'
+manifest={'version':'1.1','audio_baseline':baseline,'sha256':{name:hashlib.sha256(path.read_bytes()).hexdigest() for name,path in files.items()}}
+release=root.parent/'releases/GrainBrick_V4_Final_1.1.zip'
 with zipfile.ZipFile(release,'w',zipfile.ZIP_DEFLATED) as archive:
     for name,path in files.items():
         info=zipfile.ZipInfo(name,(2026,10,31,0,0,0));info.compress_type=zipfile.ZIP_DEFLATED
