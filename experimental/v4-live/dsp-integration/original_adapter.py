@@ -114,7 +114,19 @@ class LiveController:
             self.record_worker=worker if worker is not None and worker.running else None
             if self.record_worker is not None:self.record_worker.stop()
             try:
-                result=original_start()
+                # Keep the original arecord WAV writer; only reduce ALSA period size.
+                import subprocess
+                original_popen=subprocess.Popen
+                import threading
+                recording_thread=threading.get_ident()
+                def record_popen(args,*a,**kw):
+                    if threading.get_ident()==recording_thread:
+                        from record_monitor import recording_command
+                        args=recording_command(args)
+                    return original_popen(args,*a,**kw)
+                subprocess.Popen=record_popen
+                try:result=original_start()
+                finally:subprocess.Popen=original_popen
                 if self.main.record_mode=='recording':
                     try:
                         from record_monitor import RecordingMonitor
@@ -235,7 +247,7 @@ def install_at_boot(main,config,capture_factory=None,shared_storage=True):
         if args[0].current_tab=='SAMPLE' and getattr(main,'record_mode',None)=='recording':
             monitor=controller.record_monitor
             status=monitor.status if monitor is not None else 'OFF'
-            self.text('REC MONITOR '+status+' / DRY 50%',42,662,2,self.ACCENT)
+            self.text('REC MONITOR '+status+' / DRY 100%',42,662,2,self.ACCENT)
         if args[0].current_tab=='SAMPLE' and getattr(main,'record_mode',None)=='edit' and not getattr(self,'info_mode',False):
             import pygame
             pygame.draw.rect(self.screen,self.screen.get_at((0,200))[:3],(36,695,955,24))

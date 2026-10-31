@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 import os
 import numpy as np
-from record_monitor import RecordingMonitor,wav_layout
+from record_monitor import RecordingMonitor,wav_layout,recording_command
 from original_adapter import LiveController
 
 
@@ -17,6 +17,14 @@ def header(channels=2,rate=48000):
     return b'RIFF'+struct.pack('<I',0x7fffffff)+b'WAVEfmt '+struct.pack('<IHHIIHH',16,1,channels,rate,rate*channels*2,channels*2,16)+b'data'+struct.pack('<I',0x7fffffff)
 
 class MonitorTests(unittest.TestCase):
+    def test_original_capture_command_retains_format_device_and_path(self):
+        original=['arecord','-D','hw:1,0','-f','S16_LE','-r','48000','-c','2','-t','wav','sample.wav']
+        updated=recording_command(original)
+        self.assertEqual(updated[3:],original[1:])
+        self.assertEqual(updated[1:3],['--buffer-time=24000','--period-time=6000'])
+        self.assertEqual(original[-1],'sample.wav')
+        self.assertEqual(recording_command(['aplay','sample.wav']),['aplay','sample.wav'])
+        self.assertEqual(recording_command(['arecord','-t','raw']),['arecord','-t','raw'])
     def test_header_and_incomplete_header(self):
         self.assertIsNone(wav_layout(io.BytesIO(header()[:30])))
         self.assertEqual(wav_layout(io.BytesIO(header())),(44,2,48000))
@@ -31,14 +39,14 @@ class MonitorTests(unittest.TestCase):
                     with os.fdopen(read,'rb',buffering=0) as source:
                         while data:=source.read(4096):
                             self.audio.extend(data)
-                            if len(self.audio)>=2048:self.received.set()
+                            if len(self.audio)>=8192*4:self.received.set()
                 self.reader=threading.Thread(target=drain);self.reader.start()
             def poll(self):return self.returncode
             def terminate(self):self.returncode=0
             def wait(self,timeout):return self.returncode
         with tempfile.TemporaryDirectory() as root:
             path=Path(root)/'growing.wav';path.write_bytes(header())
-            output=Output();raw=np.full((512,2),10000,dtype='<i2').tobytes()
+            output=Output();raw=np.full((8192,2),10000,dtype='<i2').tobytes()
             with patch('record_monitor.subprocess.Popen',return_value=output) as spawn:
                 monitor=RecordingMonitor(path,'test-output');monitor.start()
                 with path.open('ab') as recording:recording.write(raw)
@@ -47,7 +55,9 @@ class MonitorTests(unittest.TestCase):
                 self.assertIsNone(monitor.error)
                 self.assertFalse(monitor.thread.is_alive())
                 self.assertEqual(path.read_bytes(),header()+raw)
-                self.assertTrue(np.all(np.frombuffer(output.audio,dtype='<i2')==5000))
+                self.assertEqual(bytes(output.audio),raw)
+                self.assertEqual(monitor.frames,8192)
+                self.assertEqual(monitor.dropped_frames,0)
                 self.assertEqual(spawn.call_args.args[0][0],'aplay')
     def test_failure_does_not_modify_recording(self):
         with tempfile.TemporaryDirectory() as root:

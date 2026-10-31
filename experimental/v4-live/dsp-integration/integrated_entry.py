@@ -61,7 +61,7 @@ def main():
     with (control/'.lock').open('a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         config=load_device_config(control)
-        print('V4 INTEGRATED ORIGINAL APP 0.1.2 preparing',str(runtime),flush=True)
+        print('V4 INTEGRATED ORIGINAL APP 0.1.3 preparing',str(runtime),flush=True)
         prepare_original(source,runtime)
         sys.dont_write_bytecode=True
         os.environ.update(GRAINBRICK_SCREEN='640x480',GRAINBRICK_SCALE='fast',GRAINBRICK_FIT='1',GRAINBRICK_BUTTONS='1',GRAINBRICK_AUDIO='1')

@@ -5,7 +5,7 @@ from pathlib import Path
 import zipfile
 
 root=Path(__file__).resolve().parent
-release=root.parent/'releases/GrainBrick_V4_Integrated_0.1.2.zip'
+release=root.parent/'releases/GrainBrick_V4_Integrated_0.1.3.zip'
 files={
     'GrainBrick V4 Integrated.sh':root/'GrainBrick V4 Integrated.sh',
     'grainbrick-v4-live/integrated_entry.py':root/'integrated_entry.py',
