@@ -87,6 +87,10 @@ def install():
             report['denoise_api']={name:list(getattr(main,name).__code__.co_varnames[:getattr(main,name).__code__.co_argcount]) for name in ('record_denoise_available','change_record_denoise')}
             report['button_bindings']={k:str(v) for k,v in vars(main.input_manager.button_mapping).items()}
             report['denoise_available_initial']=main.record_denoise_available()
+            if integrated:
+                for name in ('start_input_recording','stop_input_recording_to_editor','cancel_input_recording'):
+                    assert getattr(main,name).__module__=='main',name+' must remain the original compiled function'
+                report['original_recording_functions_retained']=True
             saved={key:getattr(main,key) for key in ('record_editor','record_denoise_path','record_denoise_strong_path','record_mode')}
             probe=app/'denoise-availability-fixture';probe.write_bytes(b'fixture')
             try:
