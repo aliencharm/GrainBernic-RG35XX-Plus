@@ -1,8 +1,14 @@
-# GrainBrick V4 — UI test 1.10 for RG35XX Plus
+# GrainBrick V4 — UI test 1.11 for RG35XX Plus
 
-**UI Test 1.10 is a small update for an existing UI Test 1.9 installation.**
+**UI Test 1.11 is a small update for an existing UI Test 1.10 installation.**
 
 This is the original GrainBrick beta 1.0 app adapted for RG35XX Plus, with its original features and DSP, plus the latest V4 live-input integration. It includes the original native engine/libraries, RG35XX display/controller adapters, bundled NumPy, resources, original project demo, AMBIENT preset, three LIVE mix knobs and Freeze [Y] hint. Personal samples/recordings/projects are not included or imported from other folders.
+
+## UI Test 1.11 darker Spruce background
+
+SPRUCE / alpine has a slightly darker background: `#081411` (RGB 8, 20, 17), replacing `#0C1B18`. Its accent stays `#2A6061`. The other palette colors, themes, audio behavior and user settings are unchanged.
+
+Close GrainBrick and extract `GrainBrick_V4_UI_Test_1.11_Update.zip` over the existing `ports/` directory. Requires installed 1.10. Only changed application files and integrity metadata are included.
 
 ## UI Test 1.10 Spruce accent
 
