@@ -1,8 +1,23 @@
-# GrainBrick V4 — UI test 1.8 for RG35XX Plus
+# GrainBrick V4 — UI test 1.9 for RG35XX Plus
 
-**UI Test 1.8 is a small update for an existing UI Test 1.7 installation.**
+**UI Test 1.9 is a small update for an existing UI Test 1.8 installation.**
 
 This is the original GrainBrick beta 1.0 app adapted for RG35XX Plus, with its original features and DSP, plus the latest V4 live-input integration. It includes the original native engine/libraries, RG35XX display/controller adapters, bundled NumPy, resources, original project demo, AMBIENT preset, three LIVE mix knobs and Freeze [Y] hint. Personal samples/recordings/projects are not included or imported from other folders.
+
+## UI Test 1.9 dark Sage and Spruce themes
+
+Paper is replaced by two dark themes based on the supplied palette. SETTINGS → THEME now offers AMBER, MINT, ICE, VIOLET, SAGE and SPRUCE. The original four are retained.
+
+| Theme | Background | Accent | Supporting color |
+| --- | --- | --- | --- |
+| SAGE / olive | `#151A10` | Sage `#CFB97E` | Muted olive `#78835D` |
+| SPRUCE / alpine | `#0C1B18` | Sapphire `#72B0AB` | Spruce `#355E58` |
+
+Both backgrounds remain dark. The brighter Sapphire tone is used for readable Spruce selections; the reference Spruce tone supports lines and separators. Text is softly tinted in each palette. A previously saved PAPER selection opens as SAGE automatically. A/B continues to cycle and save the theme while retaining audio settings and routes.
+
+Close GrainBrick and extract `GrainBrick_V4_UI_Test_1.9_Update.zip` over the existing `ports/` directory. Requires installed 1.8. This is a small file update; configuration and personal media are not supplied or replaced. Audio, latency and LIVE/freeze behavior are unchanged.
+
+Validation: 30 host tests pass, including dark backgrounds, text/selection contrast, accent-to-waveform contrast for the two new themes, and migration from PAPER. The original ARM-emulated app passes all six choices, reverse cycling, retained routes and REC/LIVE controls. Settings and waveform screenshots are inspected. Check the colors and VISUAL page on the handheld too.
 
 ## UI Test 1.8 themes
 

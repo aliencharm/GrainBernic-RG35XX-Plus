@@ -22,12 +22,22 @@ class ThemeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             path=Path(folder)/'config.json';path.write_text('{"capture":"auto","playback":"auto","input_route":"pair34"}')
             theme=self.theme(folder)
-            for name in ('MINT','ICE','VIOLET','PAPER','AMBER'):
+            for name in ('MINT','ICE','VIOLET','SAGE','SPRUCE','AMBER'):
                 theme.cycle(1);data=json.loads(path.read_text())
                 self.assertEqual(data['ui_theme'],name)
                 self.assertEqual(data['input_route'],'pair34')
                 self.assertEqual(self.theme(folder).name,name)
-            theme.cycle(-1);self.assertEqual(theme.name,'PAPER')
+            theme.cycle(-1);self.assertEqual(theme.name,'SPRUCE')
+    def test_old_paper_selection_becomes_dark_sage_without_replacing_config(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'config.json';original='{"ui_theme":"PAPER","input_route":"pair34"}'
+            path.write_text(original);theme=self.theme(folder);theme.apply()
+            self.assertEqual(theme.name,'SAGE')
+            self.assertTrue(all(channel<30 for channel in theme.roles['BG']))
+            self.assertEqual(path.read_text(),original)
+            theme.cycle(1)
+            self.assertEqual(json.loads(path.read_text()),{'ui_theme':'SPRUCE','input_route':'pair34'})
+
     def test_save_failure_retains_visible_theme(self):
         with tempfile.TemporaryDirectory() as folder:
             (Path(folder)/'config.json').write_text('{}')
@@ -52,6 +62,9 @@ class ThemeTests(unittest.TestCase):
             values=[v/12.92 if v<=.04045 else ((v+.055)/1.055)**2.4 for v in values]
             return sum(v*w for v,w in zip(values,(.2126,.7152,.0722)))
         for name,(bg,text,dim,line,accent) in PALETTES.items():
+            self.assertLess(luminance(bg),.03,name)
+            if name in ('SAGE','SPRUCE'):
+                self.assertGreaterEqual((luminance(accent)+.05)/(luminance(dim)+.05),2.,name)
             for color in (text,accent):
                 hi,lo=sorted((luminance(bg),luminance(color)),reverse=True)
                 self.assertGreaterEqual((hi+.05)/(lo+.05),4.5,name)

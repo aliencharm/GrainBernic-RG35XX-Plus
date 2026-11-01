@@ -11,7 +11,8 @@ PALETTES={
     'MINT':((10,17,16),(225,242,235),(112,147,135),(40,65,55),(104,224,174)),
     'ICE':((8,17,30),(228,240,253),(113,142,171),(35,54,79),(80,201,244)),
     'VIOLET':((15,11,23),(240,232,250),(144,124,164),(58,42,76),(190,145,245)),
-    'PAPER':((244,240,232),(28,35,47),(85,97,113),(178,182,184),(32,80,132)),
+    'SAGE':((21,26,16),(215,221,201),(120,131,93),(57,65,43),(207,185,126)),
+    'SPRUCE':((12,27,24),(205,226,220),(86,118,108),(53,94,88),(114,176,171)),
 }
 
 class Themes:
@@ -20,6 +21,7 @@ class Themes:
         try:data=json.loads((self.app/'config.json').read_text())
         except (OSError,ValueError):data={}
         selected=data.get('ui_theme','AMBER')
+        if selected=='PAPER':selected='SAGE'  # Retire the light palette without overwriting user config.
         self.name=selected if isinstance(selected,str) and selected in PALETTES else 'AMBER'
         self.initialized=False;self._colors={}
     def apply(self):
