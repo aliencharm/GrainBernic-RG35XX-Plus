@@ -1,9 +1,9 @@
-# Credits and notices
+# GrainBrick V4.1 — credits and notices
 
 Original application: **GrainBrick beta 1.0**, by **ETRNLIAM**, originally for TrimUI Brick / KNULLI.
 https://github.com/ETRNLIAM/GrainBrick
 
-RG35XX Plus port and V4 live integration:
+AntevasinBuild RG35XX Plus port and V4 live integration:
 https://github.com/aliencharm/GrainBernic-RG35XX-Plus
 
 The original compiled application and native DSP libraries are included unchanged. The original application's README describes it as a free public beta with proprietary application code; this port does not relicense it or represent it as open-source software. The RG35XX compatibility adapters retain their original headers and RG40XX H patch attribution.

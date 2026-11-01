@@ -1,12 +1,18 @@
-# GrainBrick V4 — complete RG35XX Plus build
+# GrainBrick V4.1 — standalone RG35XX Plus build
 
-[**Download the complete standalone V4 1.2 ZIP**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4_Standalone_1.2.zip)
+[**Download GrainBrick V4.1 Standalone**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.1_Standalone.zip)
 
-Extract into `/userdata/roms/ports/` and launch **GrainBrick V4**. No V3 or earlier V4 installation is needed. The ZIP includes the original app/native DSP, RG35XX display/controller adapters, NumPy/resources, original demo/preset, LIVE input, three mix knobs, freeze and dry REC monitoring. Personal recordings and custom sample libraries are not included.
+The complete AntevasinBuild based on official ETRNLIAM GrainBrick beta 1.0, consolidating the tested V4 changes through UI Test 1.13. Includes original native DSP, USB LIVE input, three mix controls, freeze, original REC/edit/save, stereo-pair routing, continuous waveform drawing and six themes.
 
-Target: RG35XX Plus with KNULLI Scarab 20260511. Tested interface: Tascam DR-40X. The app uses KNULLI's system Python 3.12/Pygame/ALSA tools. Connect USB before launch; button mapping uses the existing KNULLI controller profile, with calibration as a fallback.
+Back up any existing `grainbrick-v4` folder before a clean installation. Extract into `/userdata/roms/ports/` and launch **GrainBrick V4.1**. The ZIP contains one launcher plus one app folder; no V3, previous V4, patch chain, downloads or pip installation are required.
 
-[Installation, controls, credits and known limits](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/blob/84516c922473e22075ff6ddca05166f419b12031/experimental/v4-live/consolidated/README.md). The audio baseline was tested on-device; the new complete packaging passed standalone host/ARM-emulation checks and awaits one fresh-install handheld check.
+Target: **RG35XX Plus / KNULLI Scarab 20260511**, using system Python 3.12, Pygame and ALSA tools. The pruned NumPy runtime, factory sample/preset, native libraries, assets and licensing materials are bundled. Personal data and development/test files are excluded.
+
+[Installation, controls and known limits](experimental/v4-live/consolidated/README.md) · [Release validation](experimental/v4-live/consolidated/VALIDATION-4.1.md) · [Credits](experimental/v4-live/consolidated/CREDITS.md)
+
+The AUDIO4c saved-REC startup click remains unresolved; Tascam was reported free of that click. Audio behavior is retained from the tested build. A fresh handheld installation still needs confirmation; host/ARM emulation does not establish USB hardware performance.
+
+Historical test/update ZIPs remain available for reference; they are not installation dependencies.
 
 ---
 

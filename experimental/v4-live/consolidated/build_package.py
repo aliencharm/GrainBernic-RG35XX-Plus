@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import zipfile
 from v4_install import EXPECTED_MAIN,MAIN,ADAPTERS,VERSION
+from packaging_rules import include_vendor
 
 root=Path(__file__).resolve().parent
 parser=argparse.ArgumentParser()
@@ -12,9 +13,9 @@ parser.add_argument('--original',type=Path,required=True,help='Extracted origina
 source=parser.parse_args().original.resolve()
 assert hashlib.sha256((source/MAIN).read_bytes()).hexdigest()==EXPECTED_MAIN,'Unexpected original native application'
 baseline=json.loads((root/'audio-baseline.json').read_text())
-files={'GrainBrick V4.sh':root/'GrainBrick V4.sh','INSTALL-V4.txt':root/'README.md',
+files={f'GrainBrick V{VERSION}.sh':root/'GrainBrick V4.sh',
        'grainbrick-v4/README_V4.md':root/'README.md',
-       'grainbrick-v4/REC-STARTUP.md':root/'REC-STARTUP.md','grainbrick-v4/CREDITS_V4.md':root/'CREDITS.md',
+       'grainbrick-v4/CREDITS_V4.md':root/'CREDITS.md',
        'grainbrick-v4/config.example.json':root/'config.example.json',
        'grainbrick-v4/v4_record_ui.py':root/'v4_record_ui.py',
        'grainbrick-v4/v4_waveform.py':root/'v4_waveform.py',
@@ -38,20 +39,22 @@ for name in ('_vendor','resources','THIRD_PARTY_LICENSES','THIRD_PARTY_SOURCES')
     assert (source/name).is_dir(),'Missing original '+name
     for path in sorted((source/name).rglob('*')):
         if path.is_file() and '__pycache__' not in path.parts and path.suffix!='.pyc':
+            if name=='_vendor' and not include_vendor(path.relative_to(source/name).as_posix()):continue
             files['grainbrick-v4/'+str(path.relative_to(source))]=path
 for relative,expected in json.loads((root/'factory-content.json').read_text()).items():
     path=source/relative
     assert hashlib.sha256(path.read_bytes()).hexdigest()==expected,'Original demo differs'
-    files['grainbrick-v4/'+relative]=path
     files['grainbrick-v4/samples/'+path.name]=path
 manifest={'version':VERSION,'kind':'standalone','original_main_sha256':EXPECTED_MAIN,
+          'release_name':f'GrainBrick V{VERSION}','consolidates':'UI Test 1.13',
+          'packaging':'Runtime only; NumPy tests, compiler tools, headers and typing stubs omitted',
           'audio_baseline':baseline,'sha256':{name:hashlib.sha256(path.read_bytes()).hexdigest() for name,path in files.items()}}
 manifest['audio_overrides']={'live_source.py':'Freeze holds read headroom across size/pitch changes; unfrozen and original file audio unchanged','record_monitor.py':'Output-only 10 ms monitor startup fade; saved recordings unchanged'}
 manifest['immutable_paths']=[name for name in files if name.startswith('grainbrick-v4/') and not name.startswith(('grainbrick-v4/samples/','grainbrick-v4/projects/'))]
-release=root.parent/f'releases/GrainBrick_V4_UI_Test_{VERSION}.zip'
+release=root.parent/f'releases/GrainBrick_V{VERSION}_Standalone.zip'
 with zipfile.ZipFile(release,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as archive:
     for name,path in files.items():
-        info=zipfile.ZipInfo(name,(2026,10,31,0,0,0));info.compress_type=zipfile.ZIP_DEFLATED
+        info=zipfile.ZipInfo(name,(2026,11,1,0,0,0));info.compress_type=zipfile.ZIP_DEFLATED
         info.external_attr=(0o100755 if name.endswith('.sh') else 0o100644)<<16
         archive.writestr(info,path.read_bytes())
     archive.writestr('grainbrick-v4/recordings/','')

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Single-folder GrainBrick V4 launcher; audio code matches integrated 0.1.8."""
+"""Standalone GrainBrick V4.1 launcher; tested V4 audio and UI integration."""
 from contextlib import ExitStack
 import fcntl
 import os
@@ -20,12 +20,10 @@ def main():
             except OSError:pass
     with ExitStack() as stack:
         locks=[app/'.lock']
-        old=app.parent/'grainbrick-v4-live'
-        if old.is_dir():locks.append(old/'.lock')
         for path in locks:
             lock=stack.enter_context(path.open('a'))
             fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-        print('GRAINBRICK V4 UI TEST 1.13:',str(app),flush=True)
+        print('GRAINBRICK V4.1 STANDALONE:',str(app),flush=True)
         prepare(app)
         config=device_config(app/'config.json')
         if 'V4_USB_NOT_CONNECTED' not in config['capture']:

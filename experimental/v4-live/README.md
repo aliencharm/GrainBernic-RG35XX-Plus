@@ -1,3 +1,11 @@
+# Current release: GrainBrick V4.1 Standalone
+
+Use [the consolidated app and installation guide](consolidated/README.md). The released app retains the original native DSP with the tested V4 extensions.
+
+The notes below describe the earlier independent C-engine prototype, retained for development history. That prototype is not required by the V4.1 standalone package.
+
+---
+
 # Experimental V4 Live
 
 Independent C ALSA duplex engine and Pygame control screen for RG35XX Plus.
