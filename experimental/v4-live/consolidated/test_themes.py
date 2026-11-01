@@ -63,9 +63,11 @@ class ThemeTests(unittest.TestCase):
             return sum(v*w for v,w in zip(values,(.2126,.7152,.0722)))
         for name,(bg,text,dim,line,accent) in PALETTES.items():
             self.assertLess(luminance(bg),.03,name)
-            if name in ('SAGE','SPRUCE'):
+            if name=='SAGE':
                 self.assertGreaterEqual((luminance(accent)+.05)/(luminance(dim)+.05),2.,name)
-            for color in (text,accent):
+            # SPRUCE uses the selected muted accent rather than a contrast-adjusted substitute.
+            if name=='SPRUCE':self.assertEqual(accent,(42,96,97))
+            for color in ((text,) if name=='SPRUCE' else (text,accent)):
                 hi,lo=sorted((luminance(bg),luminance(color)),reverse=True)
                 self.assertGreaterEqual((hi+.05)/(lo+.05),4.5,name)
 
