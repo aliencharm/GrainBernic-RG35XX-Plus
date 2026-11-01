@@ -3,17 +3,29 @@ import functools
 import json
 from pathlib import Path
 import pygame
+import numpy as np
 from v4_install import write_json
 
-ROLES=('BG','WHITE','DIM','VERY_DIM','ACCENT')
+ROLES=('BG','WHITE','DIM','VERY_DIM','ACCENT','WAVE')
 PALETTES={
-    'AMBER':((5,7,8),(235,238,238),(100,110,112),(42,48,50),(210,142,78)),
-    'MINT':((10,17,16),(225,242,235),(112,147,135),(40,65,55),(104,224,174)),
-    'ICE':((8,17,30),(228,240,253),(113,142,171),(35,54,79),(80,201,244)),
-    'VIOLET':((15,11,23),(240,232,250),(144,124,164),(58,42,76),(190,145,245)),
-    'SAGE':((21,26,16),(215,221,201),(120,131,93),(57,65,43),(207,185,126)),
-    'SPRUCE':((8,20,17),(205,226,220),(86,118,108),(53,94,88),(42,96,97)),
+    'AMBER':((5,7,8),(235,238,238),(100,110,112),(42,48,50),(210,142,78),(85,95,100)),
+    'MINT':((10,17,16),(142,189,170),(86,117,104),(40,62,52),(155,232,192),(78,157,130)),
+    'ICE':((8,17,30),(143,175,203),(81,107,132),(35,54,79),(131,213,243),(63,142,175)),
+    'VIOLET':((15,11,23),(174,151,195),(111,91,131),(58,42,76),(206,165,242),(130,89,166)),
+    'SAGE':((21,26,16),(170,169,130),(110,117,81),(57,65,43),(224,207,141),(163,149,86)),
+    'SPRUCE':((7,26,29),(117,173,176),(60,106,110),(26,61,64),(56,205,208),(40,127,135)),
 }
+
+class TapeFrames:
+    """Theme one requested texture at a time instead of duplicating all 96 frames."""
+    def __init__(self,original,theme):
+        self.original=original;self.theme=theme;self.index=None;self.frame=None
+    def __len__(self):return len(self.original)
+    def __getitem__(self,index):
+        if index!=self.index:
+            self.frame=self.theme.tint_surface(self.original[index]);self.index=index
+        return self.frame
+
 
 class Themes:
     def __init__(self,app,main,controller):
@@ -23,12 +35,25 @@ class Themes:
         selected=data.get('ui_theme','AMBER')
         if selected=='PAPER':selected='SAGE'  # Retire the light palette without overwriting user config.
         self.name=selected if isinstance(selected,str) and selected in PALETTES else 'AMBER'
-        self.initialized=False;self._colors={}
+        self.initialized=False;self._colors={};self._visual_depth=0;self._tape_original=None
     def apply(self):
         cls=type(self.main.ui)
         self.roles=dict(zip(ROLES,PALETTES[self.name]))
         self._protected=set(self.roles.values());self._colors={}
         for key,value in self.roles.items():setattr(cls,key,value)
+        self._visual_lut=np.array([self.visual_color(i) for i in range(256)],dtype=np.uint8)
+        ui=self.main.ui
+        if self._tape_original is None:self._tape_original=getattr(ui,'tape_grain_frames',None)
+        if self._tape_original is not None:
+            ui.tape_grain_frames=self._tape_original if self.name=='AMBER' else TapeFrames(self._tape_original,self)
+        if getattr(ui,'visualizer',None) is not None:ui.visualizer.accent=self.roles['ACCENT']
+    def visual_color(self,value):
+        # Graphics use only the theme family. Peak graphics stay below selection brightness.
+        low,high,t=(self.roles['BG'],self.roles['WAVE'],value/160.) if value<=160 else (self.roles['WAVE'],self.roles['WHITE'],(value-160)/95.)
+        return tuple(round(a+(b-a)*t) for a,b in zip(low,high))
+    def tint_surface(self,surface):
+        values=pygame.surfarray.array3d(surface).max(axis=2)
+        return pygame.surfarray.make_surface(self._visual_lut[values])
     def cycle(self,step):
         names=list(PALETTES);name=names[(names.index(self.name)+step)%len(names)]
         # Merge the latest settings so audio/routes are retained.
@@ -40,9 +65,12 @@ class Themes:
         if self.name=='AMBER' or not isinstance(color,(tuple,list,pygame.Color)) or len(color)<3:return color
         rgb=tuple(color[:3])
         if rgb in self._protected:return color
-        if rgb not in self._colors:
+        cache_key=(rgb,bool(self._visual_depth))
+        if cache_key not in self._colors:
             r,g,b=rgb
-            if r>g+15 and g>b+10:
+            if self._visual_depth:
+                mapped=self.visual_color(max(rgb))
+            elif r>g+15 and g>b+10:
                 # Original amber highlights include darker shades for ranges.
                 weight=min(1.,max(rgb)/210.)
                 mapped=tuple(round(bg+(accent-bg)*weight) for bg,accent in zip(self.roles['BG'],self.roles['ACCENT']))
@@ -53,8 +81,8 @@ class Themes:
                 elif value>=25:mapped=self.roles['VERY_DIM']
                 else:mapped=self.roles['BG']
             else:mapped=rgb  # Preserve signal/status colors and colorful visualizers.
-            self._colors[rgb]=mapped
-        mapped=self._colors[rgb]
+            self._colors[cache_key]=mapped
+        mapped=self._colors[cache_key]
         return (*mapped,color[3]) if len(color)==4 else mapped
     def install(self):
         main=self.main;c=self.controller
@@ -113,9 +141,26 @@ class Themes:
         for name in ('line','lines','aaline','aalines','rect','polygon','circle','ellipse','arc'):
             original=getattr(pygame.draw,name)
             def wrapped(surface,color,*args,_original=original,**kwargs):
-                if self.initialized and surface is getattr(main.ui,'screen',None):color=self.color(color)
+                if self.initialized and (self._visual_depth or surface is getattr(main.ui,'screen',None)):color=self.color(color)
                 return _original(surface,color,*args,**kwargs)
             setattr(pygame.draw,name,wrapped)
+        original_visual=ui_cls.draw_visualizer
+        def visual(ui,*args,**kwargs):
+            if not self.initialized or self.name=='AMBER':return original_visual(ui,*args,**kwargs)
+            self._visual_depth+=1
+            try:return original_visual(ui,*args,**kwargs)
+            finally:self._visual_depth-=1
+        ui_cls.draw_visualizer=visual
+        waveform_cls=__import__('ui.waveform',fromlist=['WaveformView']).WaveformView
+        original_wave=waveform_cls.draw
+        def wave(view,surface,rect,*args,**kwargs):
+            if self.initialized and self.name!='AMBER' and surface is getattr(main.ui,'screen',None):
+                args=list(args)
+                for index,key,role in ((7,'color','WAVE'),(8,'active','ACCENT')):
+                    if len(args)>index:args[index]=self.roles[role]
+                    else:kwargs[key]=self.roles[role]
+            return original_wave(view,surface,rect,*args,**kwargs)
+        waveform_cls.draw=wave
         original_text=ui_cls.text
         @functools.wraps(original_text)
         def text(ui,value,*args,**kwargs):

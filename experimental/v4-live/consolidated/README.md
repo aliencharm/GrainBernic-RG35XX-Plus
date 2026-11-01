@@ -1,8 +1,26 @@
-# GrainBrick V4 — UI test 1.11 for RG35XX Plus
+# GrainBrick V4 — UI test 1.12 for RG35XX Plus
 
-**UI Test 1.11 is a small update for an existing UI Test 1.10 installation.**
+**UI Test 1.12 is a small update for an existing UI Test 1.11 installation.**
 
 This is the original GrainBrick beta 1.0 app adapted for RG35XX Plus, with its original features and DSP, plus the latest V4 live-input integration. It includes the original native engine/libraries, RG35XX display/controller adapters, bundled NumPy, resources, original project demo, AMBIENT preset, three LIVE mix knobs and Freeze [Y] hint. Personal samples/recordings/projects are not included or imported from other folders.
+
+## UI Test 1.12 approved palette refresh
+
+The five custom themes now use the approved palette-tinted text, brighter selected controls, and matching waveform, tape texture and visualization colors. AMBER retains its original palette, tape textures and visualization colors.
+
+| Theme | Background | Text | Inactive | Selected | Tape / wave |
+| --- | --- | --- | --- | --- | --- |
+| MINT | `#0A1110` | `#8EBDAA` | `#567568` | `#9BE8C0` | `#4E9D82` |
+| ICE | `#08111E` | `#8FAFCB` | `#516B84` | `#83D5F3` | `#3F8EAF` |
+| VIOLET | `#0F0B17` | `#AE97C3` | `#6F5B83` | `#CEA5F2` | `#8259A6` |
+| SAGE | `#151A10` | `#AAA982` | `#6E7551` | `#E0CF8D` | `#A39556` |
+| SPRUCE | `#071A1D` | `#75ADB0` | `#3C6A6E` | `#38CDD0` | `#287F87` |
+
+SPRUCE uses the approved blue-green cyan with only a subtle green tint. Selected controls are brighter than normal text and inactive controls in all custom themes. Whites in tape textures and visualization drawing are replaced by palette shades. Tape texture tinting caches only the requested frame; original textures are retained for switching back to AMBER. Warning/status colors outside visualization remain available.
+
+Close GrainBrick and extract `GrainBrick_V4_UI_Test_1.12_Update.zip` over the existing `ports/` directory. Requires installed 1.11. This update retains configuration, media and all audio/DSP/buffer behavior.
+
+Validation: 32 host tests pass, including selection brightness, tinted graphics, source-texture preservation and Amber restoration. The original ARM-emulated app passes all six palettes, SETTINGS navigation, TAPE and VISUAL drawing, REC/LIVE controls and clean exit with audio mocked. Custom-theme TAPE/VISUAL screenshots have no near-white pixels; screenshots are inspected. Handheld animation performance and listening still need device testing.
 
 ## UI Test 1.11 darker Spruce background
 
