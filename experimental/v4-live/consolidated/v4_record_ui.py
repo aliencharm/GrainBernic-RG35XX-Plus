@@ -7,6 +7,11 @@ class RecordingUI:
     def source_label(self):
         try:return self.main.current_record_source()['label']
         except (AttributeError,KeyError,IndexError):return 'USB INPUT'
+    def draw_source_label(self,ui,x,y,width,scale):
+        label=self.source_label()
+        # Original bitmap text uses a six-pixel character advance.
+        while scale>1 and len(label)*6*scale>width:scale-=1
+        ui.text(label,x,y,scale,ui.ACCENT)
     def install(self):
         main=self.main;c=self.controller
         before=c.before_input
@@ -55,7 +60,7 @@ class RecordingUI:
             if main.record_mode=='browser':
                 pygame.draw.rect(ui.screen,ui.screen.get_at((0,200))[:3],(640,105,355,140))
                 ui.text(c.mode,665,120,5,ui.ACCENT)
-                ui.text(self.source_label(),650,190,2)
+                self.draw_source_label(ui,650,190,345,3)
             return result
         cls.draw_sample_page=sample
         cls.draw_record_ready_page=lambda ui:self.ready(ui)
@@ -81,7 +86,7 @@ class RecordingUI:
         if active and c.bus().get('transport.playing')<.5:status='PAUSED'
         ui.text(status,715,135,3)
         ui.text('INPUT',55,205,2,(150,160,160))
-        ui.text(self.source_label(),55,240,3,ui.ACCENT)
+        self.draw_source_label(ui,55,240,914,4)
         format_text=self.main.current_record_source().get('format','48 KHZ / STEREO USB')
         ui.text(format_text,55,285,2)
         if c.mode=='LIVE':

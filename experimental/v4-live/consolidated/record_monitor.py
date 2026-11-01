@@ -12,6 +12,9 @@ def recording_command(args):
     if not isinstance(args,(list,tuple)) or not args or Path(str(args[0])).name!='arecord':return args
     if '-t' not in args or args[args.index('-t')+1]!='wav':return args
     if any(str(a).startswith(('--buffer-time','--period-time','--buffer-size','--period-size')) for a in args):return args
+    if os.environ.get('GRAINBRICK_REC_CAPTURE_TIMING')=='original':
+        print('REC DIAGNOSTIC: original capture timing; no buffer/period override',flush=True)
+        return args
     result=[args[0],'--buffer-time=24000','--period-time=6000',*args[1:]]
     print('REC MONITOR CAPTURE: original WAV recorder; buffer_us=24000 period_us=6000',flush=True)
     return result
@@ -59,6 +62,11 @@ class RecordingMonitor:
         self._stop=threading.Event();self.thread=None;self.process=None
         self.status='STARTING';self.error=None;self.frames=0;self.dropped_frames=0
     def start(self):
+        # Isolate opening USB playback after capture starts, without touching WAV data.
+        if os.environ.get('GRAINBRICK_REC_MONITOR')=='0':
+            self.status='OFF'
+            print('REC DIAGNOSTIC: monitor disabled; original WAV recording continues',flush=True)
+            return
         self.thread=threading.Thread(target=self._run,name='v4-record-monitor',daemon=True)
         self.thread.start()
     def _run(self):

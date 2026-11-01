@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 import tempfile
 
-VERSION='1.4'
+VERSION='1.5'
 MAIN='main.cpython-312-aarch64-linux-gnu.so'
 EXPECTED_MAIN='1481f6525cfbbbf5e9e8f95b622ec7e7edcbed1b7064a79fd01ce9c9dd085846'
 ADAPTERS=('gb_launch.py','gb_audio.py','gb_buttons.py','gb_display_fit.py')

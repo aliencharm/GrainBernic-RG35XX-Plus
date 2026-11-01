@@ -1,8 +1,14 @@
-# GrainBrick V4 — UI test 1.4 for RG35XX Plus
+# GrainBrick V4 — UI test 1.5 for RG35XX Plus
 
 **One complete ZIP. No V3 or previous V4 installation is required.**
 
 This is the original GrainBrick beta 1.0 app adapted for RG35XX Plus, with its original features and DSP, plus the latest V4 live-input integration. It includes the original native engine/libraries, RG35XX display/controller adapters, bundled NumPy, resources, original project demo, AMBIENT preset, three LIVE mix knobs and Freeze [Y] hint. Personal samples/recordings/projects are not included or imported from other folders.
+
+## UI Test 1.5 changes
+
+Selected input-pair labels are larger in the browser and REC/LIVE ready page, with a smaller fallback for long interface names. REC keeps its original capture/edit/save path and the default 1.4 monitor behavior. The saved-WAV startup click is still under investigation; the monitor-only fade did not solve the reported capture click.
+
+Two opt-in diagnostic controls isolate monitor playback startup and V4 capture buffer timing. See `REC-STARTUP.md` for the four-case comparison. They do not fade, trim, denoise or otherwise alter saved audio. No click fix is claimed pending affected WAVs and on-device comparisons.
 
 ## Redesigned REC/LIVE controls (1.4)
 
