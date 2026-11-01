@@ -58,6 +58,8 @@ def install():
             actions={1:'X',2:'A',3:'TAB_NEXT',4:'TAB_NEXT',5:'TAB_PREV',6:'TAB_PREV',7:'Y',8:'RIGHT',9:'DOWN',10:'LEFT',11:'DOWN',12:'LEFT',13:'UP',14:'RIGHT',15:'UP',16:'RIGHT',17:'B',18:'X',19:'A',20:'B',21:'EXIT'}
             if '--channel-routing' in sys.argv:
                 actions={1:'X',2:'R2',3:'A',4:'TAB_NEXT',5:'TAB_NEXT',6:'TAB_PREV',7:'TAB_PREV',8:'Y',9:'RIGHT',10:'DOWN',11:'LEFT',12:'DOWN',13:'LEFT',14:'UP',15:'RIGHT',16:'UP',17:'RIGHT',18:'L2',19:'A',20:'B',21:'X',22:'R2',23:'A',24:'B',25:'EXIT'}
+            if '--record-ui' in sys.argv:
+                actions={1:'X',2:'R2',3:'Y',4:'TAB_NEXT',5:'TAB_NEXT',6:'TAB_PREV',7:'TAB_PREV',8:'Y',9:'RIGHT',10:'DOWN',11:'LEFT',12:'DOWN',13:'LEFT',14:'UP',15:'RIGHT',16:'UP',17:'RIGHT',18:'L2',19:'Y',20:'B',21:'B',22:'X',23:'R2',24:'Y',25:'Y',26:'START',27:'EXIT'}
             action=actions.get(state['frames'])
             return [(action,None)] if action else []
         return [('EXIT',None) for ev in pg.event.get() if ev.type==pg.QUIT]
@@ -80,6 +82,11 @@ def install():
             if '--channel-routing' in sys.argv:self._audio_outputs=sys.modules['engine.audio_devices'].available_outputs()
             else:self._audio_outputs=[('USB_TEST','Mock Tascam','plughw:CARD=Series,DEV=0')]
         ui_cls.refresh_audio_outputs=refresh
+    original_bar=ui_cls.draw_bar_items
+    def bar(self,*args,**kwargs):
+        if 'bar_arguments' not in report:report['bar_arguments']={'signature':list(original_bar.__code__.co_varnames),'args':repr(args),'kwargs':repr(kwargs)}
+        return original_bar(self,*args,**kwargs)
+    ui_cls.draw_bar_items=bar
     original_draw=ui_cls.draw
     original_ready=ui_cls.draw_record_ready_page
     def ready(self):
@@ -121,19 +128,28 @@ def install():
                         break
             # Ask the REAL original main to enter its real recording page.
             main.controls.tab_index=main.controls.TABS.index('SAMPLE')
-            main.handle_record_action('Y',None)
+            if '--record-ui' not in sys.argv:main.handle_record_action('Y',None)
             if integrated:
-                def no_record_file():state['record_start_delegated']+=1
+                def no_record_file():
+                    state['record_start_delegated']+=1
+                    if '--record-ui' in sys.argv:main.record_mode='recording'
                 main.start_input_recording=no_record_file
+                if '--record-ui' in sys.argv:
+                    def fake_stop_record():
+                        state['record_stop_delegated']=state.get('record_stop_delegated',0)+1
+                        main.record_mode='browser'
+                    main.stop_input_recording_to_editor=fake_stop_record
+                    def preview_request(self):state['preview_requested']=state.get('preview_requested',0)+1
+                    type(main.controls).request_sample_preview=preview_request
         if integrated:
             if '--channel-routing' in sys.argv and state['frames']==14:
                 main.ui.audio_output_id=main.ui._audio_outputs[-1][0]
             report.setdefault('frames',[]).append({'frame':state['frames'],'tab':main.controls.current_tab,'record_mode':main.record_mode,'mode':controller.mode,'active':controller.active(),'input_index':main.record_source_index,'capture':controller.config['capture'],'playback':controller.config['playback'],'outputs':list(main.ui._audio_outputs),'freeze':main.params.get('live.freeze'),'mix':main.params.get('live.mix'),'fx_mix':main.params.get('live.fx_mix'),'tape_mix':main.params.get('live.tape_mix'),'worker':bool(main.audio_worker and main.audio_worker.running)})
         original_draw(self,*args,**kwargs)
-        if integrated and state['frames'] in (3,4,5,13):
+        if integrated and state['frames'] in (1,3,4,5,13,25,26):
             pg.image.save(self.screen,str(app/('integrated-frame-'+str(state['frames'])+'.png')))
             report['live_waveform_fields']=list(vars(self.waveform))
-        if state['frames']>=(26 if '--channel-routing' in sys.argv else 22 if integrated else 3):
+        if state['frames']>=(28 if '--record-ui' in sys.argv else 26 if '--channel-routing' in sys.argv else 22 if integrated else 3):
             pg.image.save(self.screen,str(app/'original-record-page.png'))
             pg.event.post(pg.event.Event(pg.QUIT))
     ui_cls.draw=draw
@@ -174,11 +190,14 @@ finally:
     (app/'original-main-report.json').write_text(json.dumps(report,indent=2)+'\n')
 print('ORIGINAL MAIN TEST RESULT',json.dumps(state),flush=True)
 assert state['frames']>=3 and state['worker_constructed']>0 and state['worker_stopped']>0
-assert state['record_overlay_calls']>0,'Original record page hook was not dispatched'
+if '--record-ui' not in sys.argv:assert state['record_overlay_calls']>0,'Original record page hook was not dispatched'
+else:
+    assert state.get('record_stop_delegated')==1,state
+    assert state.get('preview_requested')==1,state
 if integrated:
     frames=report['frames']
     if '--channel-routing' in sys.argv:
-        assert any(f['input_index']==1 and f['active'] for f in frames),frames
+        assert any(f['input_index']!=frames[0]['input_index'] and f['active'] for f in frames),frames
         assert any(len(f['outputs'])>=5 for f in frames),frames
         assert any(f['playback'].endswith('_7_8') for f in frames),frames
     assert any(f['tab']=='FX' and f['active'] and f['worker'] for f in frames),frames

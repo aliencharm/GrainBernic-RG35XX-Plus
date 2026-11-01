@@ -1,8 +1,22 @@
-# GrainBrick V4 — routing test 1.3 for RG35XX Plus
+# GrainBrick V4 — UI test 1.4 for RG35XX Plus
 
 **One complete ZIP. No V3 or previous V4 installation is required.**
 
 This is the original GrainBrick beta 1.0 app adapted for RG35XX Plus, with its original features and DSP, plus the latest V4 live-input integration. It includes the original native engine/libraries, RG35XX display/controller adapters, bundled NumPy, resources, original project demo, AMBIENT preset, three LIVE mix knobs and Freeze [Y] hint. Personal samples/recordings/projects are not included or imported from other folders.
+
+## Redesigned REC/LIVE controls (1.4)
+
+On the SAMPLE/LIVE browser, X switches REC/LIVE directly; the current mode is displayed prominently at the upper right. Y opens and starts that selected mode. A still loads samples; B still navigates back. Sample preview moves from X to START on this browser; START + SELECT remains the global exit combo.
+
+L2/R2 selects the input pair from the browser and from the REC/LIVE control page. The ready page has a large REC or LIVE heading, a dedicated input line and a separate format hint. LIVE keeps the three knobs. Mode/start/freeze/input shortcuts now appear in the footer, which is drawn through the original footer renderer.
+
+While LIVE is running, Y toggles freeze. With LIVE stopped, Y starts it; with LIVE paused, Y resumes. B stops/backs out as before, and X changes mode on the control page. During sample recording, Y stops and opens the original recording editor; B remains supported. Original editing and save controls are retained.
+
+The REC monitor now uses a 10 ms soft start only on its output. After that it remains unity-gain dry monitoring. The saved WAV, original capture algorithm, and LIVE DSP path are unchanged. The soft start reduces an initial digital discontinuity; it cannot guarantee removal of a hardware clock/stream-initialization pop. Hardware testing is required.
+
+No new direct-monitor knob is added in this build. The user hears new notes with freeze and 100% granular mix; the user also confirmed fresh notes remain audible after stopping LIVE, identifying a path bypassing LIVE processing, likely interface/DAW monitoring. Closing the whole app can confirm that it is external. A software knob cannot mute an external routing path.
+
+Host tests verify the startup fade and unchanged recorded-file bytes. The ARM-emulated original app checks browser X mode selection, Y LIVE start/freeze, input changes, mix controls, original tabs, Y REC start/stop delegation, footer rendering and clean exit with hardware/file recording mocked. These UI changes require a handheld check.
 
 ## New stereo-pair selection — hardware test build
 
@@ -39,13 +53,9 @@ The app opens without copying anything from older versions. First launch checks 
 
 ## Controls
 
-On **SAMPLE/LIVE**, Y opens RECORD INPUT. X switches REC/LIVE while stopped.
+On **SAMPLE/LIVE**, X switches REC/LIVE directly. Y starts the selected mode. A loads/opens the sample selection, B goes back, START previews a selected sample, and START + SELECT exits. L2/R2 selects the input pair.
 
-LIVE:
-- A starts/resumes; B stops; START + SELECT exits.
-- Up/down selects GRANULAR, FX or TAPE MIX; left/right adjusts in 5% steps.
-- Y toggles freeze. Its state and **FREEZE [Y]: ON/OFF** shortcut are shown under the knobs, with “HOLD LIVE BUFFER / PRESS Y TO TOGGLE”.
-- Original tabs expose GRAIN, FX, TAPE, VISUAL, SETTINGS and SAVE.
+On the LIVE control page, up/down selects GRANULAR/FX/TAPE MIX and left/right adjusts it. Y freezes when running or starts/resumes when stopped/paused. X changes mode; B stops/backs out. During REC, Y or B stops to the original edit page. Footer hints show the current actions.
 
 Granular Mix blends raw input and grains. FX Mix blends around the original delay/reverb/shimmer group; Tape Mix blends around tape. Original per-effect controls, EQ, compression, ORBIX and gain remain available. FX/Tape default to 100%; Granular Mix resets to 0% when LIVE starts fresh. New stage blends apply to LIVE; original sample playback retains its original processing.
 
@@ -71,7 +81,7 @@ Everything is under `grainbrick-v4/`: `v4.log`, `audio_process.log`, `config.jso
 
 ## Validation and known limits
 
-The integrated audio baseline was tested on RG35XX Plus/KNULLI/Tascam: original UI/DSP, LIVE low-latency dry monitoring, granular/FX/Tape knobs, freeze and sample recording/playback. This package retains that audio code and original binaries unchanged. 13 host tests cover standalone setup, USB selection and controller-profile handling. The standalone first-run/configuration and complete bundled layout are verified under ARM emulation with hardware/process boundaries mocked. The automatic system profile also passed through the actual V3 translator and original InputManager for A/B/X/Y, L/R, L2/R2, SELECT/START, D-pad and the exit combo. A fresh full-app run generated its button map automatically from the system-profile fixture, with no old calibration or earlier app folders. One fresh-install handheld check is still needed for the standalone packaging.
+The integrated audio baseline was tested on RG35XX Plus/KNULLI/Tascam: original UI/DSP, LIVE low-latency dry monitoring, granular/FX/Tape knobs, freeze and sample recording/playback. LIVE DSP and original binaries are retained; REC monitor output alone receives the documented short startup fade. 13 host tests cover standalone setup, USB selection and controller-profile handling. The standalone first-run/configuration and complete bundled layout are verified under ARM emulation with hardware/process boundaries mocked. The automatic system profile also passed through the actual V3 translator and original InputManager for A/B/X/Y, L/R, L2/R2, SELECT/START, D-pad and the exit combo. A fresh full-app run generated its button map automatically from the system-profile fixture, with no old calibration or earlier app folders. One fresh-install handheld check is still needed for the standalone packaging.
 
 Rare transition clicks during granular parameter changes remain a known observation. An earlier unexpected USB loss was not reproduced in later tests. New USB interfaces and timing under heavy DSP load need their own checks. The output buffer remains the tested 2048-frame LIVE request; no new DSP or timing algorithm is introduced.
 
