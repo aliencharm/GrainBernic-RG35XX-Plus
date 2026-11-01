@@ -5,6 +5,12 @@ The reported click is in the saved WAV. No affected WAV or matching device log
 is available in this checkout, and USB hardware is unavailable in the cloud.
 A root cause or successful fix cannot yet be claimed.
 
+Device feedback: Tascam recordings have no startup click; AUDIO4c still has the
+click at the start of saved recordings in UI Test 1.5. General 1.5 behavior was
+reported good. No results for the individual A/B/C/D diagnostic cases have yet
+been reported. This narrows the issue to the AUDIO4c setup but does not establish
+which capture/playback initialization or routing transition causes it.
+
 ## Confirmed code path
 
 `RecordingUI` delegates REC to the original `main.start_input_recording`.

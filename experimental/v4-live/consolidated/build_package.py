@@ -4,7 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 import zipfile
-from v4_install import EXPECTED_MAIN,MAIN,ADAPTERS
+from v4_install import EXPECTED_MAIN,MAIN,ADAPTERS,VERSION
 
 root=Path(__file__).resolve().parent
 parser=argparse.ArgumentParser()
@@ -25,7 +25,7 @@ files={'GrainBrick V4.sh':root/'GrainBrick V4.sh','INSTALL-V4.txt':root/'README.
 for name,expected in baseline['files'].items():
     path=root.parent/'dsp-integration'/name
     assert hashlib.sha256(path.read_bytes()).hexdigest()==expected,'Audio baseline changed: '+name
-    files['grainbrick-v4/'+name]=(root/'record_monitor.py') if name=='record_monitor.py' else path
+    files['grainbrick-v4/'+name]=(root/name) if name in ('record_monitor.py','live_source.py') else path
 for path in sorted(source.iterdir()):
     if path.is_file() and (path.suffix=='.so' or '.so.' in path.name or path.name in ('README_EN.md','THIRD_PARTY_NOTICES.md')):
         files['grainbrick-v4/'+path.name]=path
@@ -42,11 +42,11 @@ for relative,expected in json.loads((root/'factory-content.json').read_text()).i
     assert hashlib.sha256(path.read_bytes()).hexdigest()==expected,'Original demo differs'
     files['grainbrick-v4/'+relative]=path
     files['grainbrick-v4/samples/'+path.name]=path
-manifest={'version':'1.5','kind':'standalone','original_main_sha256':EXPECTED_MAIN,
+manifest={'version':VERSION,'kind':'standalone','original_main_sha256':EXPECTED_MAIN,
           'audio_baseline':baseline,'sha256':{name:hashlib.sha256(path.read_bytes()).hexdigest() for name,path in files.items()}}
-manifest['audio_overrides']={'record_monitor.py':'Output-only 10 ms monitor startup fade; saved recordings unchanged'}
+manifest['audio_overrides']={'live_source.py':'Freeze holds read headroom across size/pitch changes; unfrozen and original file audio unchanged','record_monitor.py':'Output-only 10 ms monitor startup fade; saved recordings unchanged'}
 manifest['immutable_paths']=[name for name in files if name.startswith('grainbrick-v4/') and not name.startswith(('grainbrick-v4/samples/','grainbrick-v4/projects/'))]
-release=root.parent/'releases/GrainBrick_V4_UI_Test_1.5.zip'
+release=root.parent/f'releases/GrainBrick_V4_UI_Test_{VERSION}.zip'
 with zipfile.ZipFile(release,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as archive:
     for name,path in files.items():
         info=zipfile.ZipInfo(name,(2026,10,31,0,0,0));info.compress_type=zipfile.ZIP_DEFLATED

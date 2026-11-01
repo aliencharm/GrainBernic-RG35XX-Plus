@@ -11,6 +11,14 @@ def supports_48k(text):
     rates=[int(n) for n in re.findall(r'\d+',text)]
     return 48000 in rates or ('-' in text and len(rates)>=2 and rates[0]<=48000<=rates[1])
 
+def interface_label(stream):
+    """Short display names only; ALSA IDs and saved route aliases stay exact."""
+    identifier=stream['id']
+    description=' '.join(mode.get('device_name','') for mode in stream['descriptors'])
+    if 'audio4c' in (identifier+' '+description).lower():return 'AUDIO4c'
+    if identifier=='Series' or 'tascam' in (identifier+' '+description).lower():return 'TASCAM'
+    return identifier
+
 def discover(asound=Path('/proc/asound')):
     routes=[]
     streams=inventory(asound)
@@ -26,7 +34,7 @@ def discover(asound=Path('/proc/asound')):
                 alias=f'v4_{direction}_{identifier}_{device}_{first+1}_{first+2}'
                 routes.append(dict(alias=alias,direction=direction,card=identifier,device=device,
                                    channels=mode['channels'],format=mode['format'],first=first,
-                                   label=f'{identifier}'+(f' PCM{device}' if sum(s['id']==identifier for s in streams)>1 else '')+f' {first+1}-{first+2}',
+                                   label=interface_label(stream)+(f' PCM{device}' if sum(s['id']==identifier for s in streams)>1 else '')+f' {first+1}-{first+2}',
                                    hardware=f'hw:CARD={identifier},DEV={device}'))
     return routes
 

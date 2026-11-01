@@ -1,8 +1,18 @@
-# GrainBrick V4 — UI test 1.5 for RG35XX Plus
+# GrainBrick V4 — UI test 1.6 for RG35XX Plus
 
-**One complete ZIP. No V3 or previous V4 installation is required.**
+**UI Test 1.6 is a small update for an existing UI Test 1.5 installation.**
 
 This is the original GrainBrick beta 1.0 app adapted for RG35XX Plus, with its original features and DSP, plus the latest V4 live-input integration. It includes the original native engine/libraries, RG35XX display/controller adapters, bundled NumPy, resources, original project demo, AMBIENT preset, three LIVE mix knobs and Freeze [Y] hint. Personal samples/recordings/projects are not included or imported from other folders.
+
+## UI Test 1.6 update (requires installed UI Test 1.5)
+
+Input selection in the browser and REC/LIVE page, and the output list in SETTINGS, use the same short interface names: `TASCAM 1-2`, `AUDIO4c 1-2`, `AUDIO4c 3-4`, etc. Channel pair numbers remain visible. This changes display names only; ALSA devices, route aliases, configuration and audio behavior are retained.
+
+Close GrainBrick, then extract `GrainBrick_V4_UI_Test_1.6_Update.zip` into the existing `ports/` directory and accept replacement of the included files. It contains only changed application files and updated integrity metadata. Keep the existing `grainbrick-v4` folder; do not delete it or install this update alone. No configuration, recordings, samples or projects are included. The full standalone package will be consolidated later.
+
+The AUDIO4c saved-recording startup click remains under investigation. Tascam was reported free of the click. Frozen LIVE now keeps its read anchor when SIZE or PITCH changes. POSITION still scans the held buffer. ROAM and MOTION retain their independent movement when enabled; the highlighted grain span still changes length with SIZE. Unfrozen LIVE keeps its existing capture headroom and latency behavior. Original sample playback and REC audio are unchanged.
+
+Validation: 21 consolidated tests, 8 routing tests and 8 existing source-adapter tests pass. The update overlay is checked against the complete target manifest. The original app also passes the ARM-emulated UI run; USB audio is mocked, so the freeze change still needs a handheld listening/display check.
 
 ## UI Test 1.5 changes
 

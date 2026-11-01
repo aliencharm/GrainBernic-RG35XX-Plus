@@ -17,6 +17,25 @@ class RouteTests(unittest.TestCase):
                 self.assertIn('ttable.0.6 1',route_definition(selected[-1]))
                 self.assertIn('channels 8 format S32_LE',route_definition(selected[-1]))
                 self.assertFalse(any('9-10' in r['label'] for r in selected))
+    def test_short_names_are_shared_by_input_and_output_without_changing_routes(self):
+        for identifier,description,expected in (
+            ('Series','TASCAM DR-40X at usb-host','TASCAM'),
+            ('Series','Series at usb-host','TASCAM'),
+            ('AUDIO4c','iConnectivity AUDIO4c at usb-host','AUDIO4c'),
+            ('USB','Other interface at usb-host','USB'),
+        ):
+            with self.subTest(identifier=identifier),tempfile.TemporaryDirectory() as root:
+                card=Path(root)/'card3';card.mkdir()
+                (card/'id').write_text(identifier);(card/'usbid').write_text('1234:5678')
+                modes=''.join(direction+':\n Interface 1\n Altset 1\n Format: S32_LE\n Channels: 4\n Rates: 48000\n' for direction in ('Playback','Capture'))
+                (card/'stream0').write_text(description+'\n'+modes)
+                routes=discover(Path(root))
+                for direction in ('capture','playback'):
+                    selected=[r for r in routes if r['direction']==direction]
+                    self.assertEqual([r['label'] for r in selected],[expected+' 1-2',expected+' 3-4'])
+                    self.assertEqual(selected[0]['alias'],f'v4_{direction}_{identifier}_0_1_2')
+                    self.assertEqual(selected[0]['hardware'],f'hw:CARD={identifier},DEV=0')
+
     def test_original_output_resolver_can_resolve_pair_aliases(self):
         import types,sys
         from unittest.mock import patch
