@@ -18,6 +18,7 @@ files={'GrainBrick V4.sh':root/'GrainBrick V4.sh','INSTALL-V4.txt':root/'README.
        'grainbrick-v4/config.example.json':root/'config.example.json',
        'grainbrick-v4/v4_record_ui.py':root/'v4_record_ui.py',
        'grainbrick-v4/v4_waveform.py':root/'v4_waveform.py',
+       'grainbrick-v4/v4_themes.py':root/'v4_themes.py',
        'grainbrick-v4/audio_inventory.py':root.parent/'routing/audio_inventory.py',
        'grainbrick-v4/channel_routes.py':root.parent/'routing/channel_routes.py',
        'grainbrick-v4/v4_buttons.py':root/'v4_buttons.py',

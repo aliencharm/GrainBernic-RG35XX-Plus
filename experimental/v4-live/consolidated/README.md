@@ -1,8 +1,18 @@
-# GrainBrick V4 — UI test 1.7 for RG35XX Plus
+# GrainBrick V4 — UI test 1.8 for RG35XX Plus
 
-**UI Test 1.7 is a small update for an existing UI Test 1.6 installation.**
+**UI Test 1.8 is a small update for an existing UI Test 1.7 installation.**
 
 This is the original GrainBrick beta 1.0 app adapted for RG35XX Plus, with its original features and DSP, plus the latest V4 live-input integration. It includes the original native engine/libraries, RG35XX display/controller adapters, bundled NumPy, resources, original project demo, AMBIENT preset, three LIVE mix knobs and Freeze [Y] hint. Personal samples/recordings/projects are not included or imported from other folders.
+
+## UI Test 1.8 themes
+
+SETTINGS now includes THEME: AMBER (the original appearance), MINT, ICE, VIOLET and PAPER. Select THEME with the D-pad and use A/B to cycle. The choice applies immediately and is saved automatically in `config.json` as `ui_theme`, independently of SAVE PARAMS ON EXIT. Existing audio device and channel-route settings are retained. The six settings rows fit above the footer.
+
+Themes change the background, text, dimmed controls, highlights and waveform colors through the original renderer. Signal/status colors and colorful visualizer content are retained where possible; tape imagery keeps its original texture. No screen-wide image filter runs on each frame. AMBER preserves the original palette. Audio buffers, DSP, LIVE/freeze and recording behavior are unchanged.
+
+Close GrainBrick and extract `GrainBrick_V4_UI_Test_1.8_Update.zip` over the existing `ports/` directory. Requires installed 1.7. Only changed app files and integrity metadata are supplied; no personal settings or media are overwritten.
+
+Validation: 29 host tests pass, including theme persistence, route preservation and text/selection contrast. The ARM-emulated original app passes all five theme selections, backward cycling, SETTINGS navigation around THEME, REC/LIVE actions and clean exit. Screenshots of the settings layouts are checked. Hardware display/performance still needs testing.
 
 ## UI Test 1.7 continuous waveform display
 
