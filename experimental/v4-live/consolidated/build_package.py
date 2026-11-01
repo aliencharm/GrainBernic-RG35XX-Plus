@@ -15,6 +15,8 @@ baseline=json.loads((root/'audio-baseline.json').read_text())
 files={'GrainBrick V4.sh':root/'GrainBrick V4.sh','INSTALL-V4.txt':root/'README.md',
        'grainbrick-v4/README_V4.md':root/'README.md','grainbrick-v4/CREDITS_V4.md':root/'CREDITS.md',
        'grainbrick-v4/config.example.json':root/'config.example.json',
+       'grainbrick-v4/audio_inventory.py':root.parent/'routing/audio_inventory.py',
+       'grainbrick-v4/channel_routes.py':root.parent/'routing/channel_routes.py',
        'grainbrick-v4/v4_buttons.py':root/'v4_buttons.py',
        'grainbrick-v4/v4_entry.py':root/'v4_entry.py','grainbrick-v4/v4_install.py':root/'v4_install.py',
        'grainbrick-v4/projects/AMBIENT.json':root/'factory-preset.json'}
@@ -38,10 +40,10 @@ for relative,expected in json.loads((root/'factory-content.json').read_text()).i
     assert hashlib.sha256(path.read_bytes()).hexdigest()==expected,'Original demo differs'
     files['grainbrick-v4/'+relative]=path
     files['grainbrick-v4/samples/'+path.name]=path
-manifest={'version':'1.2','kind':'standalone','original_main_sha256':EXPECTED_MAIN,
+manifest={'version':'1.3','kind':'standalone','original_main_sha256':EXPECTED_MAIN,
           'audio_baseline':baseline,'sha256':{name:hashlib.sha256(path.read_bytes()).hexdigest() for name,path in files.items()}}
 manifest['immutable_paths']=[name for name in files if name.startswith('grainbrick-v4/') and not name.startswith(('grainbrick-v4/samples/','grainbrick-v4/projects/'))]
-release=root.parent/'releases/GrainBrick_V4_Standalone_1.2.zip'
+release=root.parent/'releases/GrainBrick_V4_Routing_Test_1.3.zip'
 with zipfile.ZipFile(release,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as archive:
     for name,path in files.items():
         info=zipfile.ZipInfo(name,(2026,10,31,0,0,0));info.compress_type=zipfile.ZIP_DEFLATED

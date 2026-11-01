@@ -56,6 +56,8 @@ def install():
     def poll_input(self,*args,**kwargs):
         if integrated:
             actions={1:'X',2:'A',3:'TAB_NEXT',4:'TAB_NEXT',5:'TAB_PREV',6:'TAB_PREV',7:'Y',8:'RIGHT',9:'DOWN',10:'LEFT',11:'DOWN',12:'LEFT',13:'UP',14:'RIGHT',15:'UP',16:'RIGHT',17:'B',18:'X',19:'A',20:'B',21:'EXIT'}
+            if '--channel-routing' in sys.argv:
+                actions={1:'X',2:'R2',3:'A',4:'TAB_NEXT',5:'TAB_NEXT',6:'TAB_PREV',7:'TAB_PREV',8:'Y',9:'RIGHT',10:'DOWN',11:'LEFT',12:'DOWN',13:'LEFT',14:'UP',15:'RIGHT',16:'UP',17:'RIGHT',18:'L2',19:'A',20:'B',21:'X',22:'R2',23:'A',24:'B',25:'EXIT'}
             action=actions.get(state['frames'])
             return [(action,None)] if action else []
         return [('EXIT',None) for ev in pg.event.get() if ev.type==pg.QUIT]
@@ -74,7 +76,9 @@ def install():
             controller=install_at_boot(main,{'capture':'synthetic','playback':'default'},Capture,shared_storage=True)
     ui_cls=renderer.UIEngine
     if final_entry:
-        def refresh(self):self._audio_outputs=[('USB_TEST','Mock Tascam','plughw:CARD=Series,DEV=0')]
+        def refresh(self):
+            if '--channel-routing' in sys.argv:self._audio_outputs=sys.modules['engine.audio_devices'].available_outputs()
+            else:self._audio_outputs=[('USB_TEST','Mock Tascam','plughw:CARD=Series,DEV=0')]
         ui_cls.refresh_audio_outputs=refresh
     original_draw=ui_cls.draw
     original_ready=ui_cls.draw_record_ready_page
@@ -90,6 +94,7 @@ def install():
         if final_entry:controller=main._v4_controller
         if state['frames']==1:
             report['original_main_functions']=[k for k,v in vars(main).items() if callable(v) and getattr(v,'__module__',None)=='main']
+            report['record_sources']=main.RECORD_SOURCES
             report['record_globals']={k:v if isinstance(v,(str,int,float,bool,type(None))) else type(v).__name__ for k,v in vars(main).items() if 'record' in k}
             report['denoise_api']={name:list(getattr(main,name).__code__.co_varnames[:getattr(main,name).__code__.co_argcount]) for name in ('record_denoise_available','change_record_denoise')}
             report['button_bindings']={k:str(v) for k,v in vars(main.input_manager.button_mapping).items()}
@@ -121,12 +126,14 @@ def install():
                 def no_record_file():state['record_start_delegated']+=1
                 main.start_input_recording=no_record_file
         if integrated:
-            report.setdefault('frames',[]).append({'frame':state['frames'],'tab':main.controls.current_tab,'record_mode':main.record_mode,'mode':controller.mode,'active':controller.active(),'freeze':main.params.get('live.freeze'),'mix':main.params.get('live.mix'),'fx_mix':main.params.get('live.fx_mix'),'tape_mix':main.params.get('live.tape_mix'),'worker':bool(main.audio_worker and main.audio_worker.running)})
+            if '--channel-routing' in sys.argv and state['frames']==14:
+                main.ui.audio_output_id=main.ui._audio_outputs[-1][0]
+            report.setdefault('frames',[]).append({'frame':state['frames'],'tab':main.controls.current_tab,'record_mode':main.record_mode,'mode':controller.mode,'active':controller.active(),'input_index':main.record_source_index,'capture':controller.config['capture'],'playback':controller.config['playback'],'outputs':list(main.ui._audio_outputs),'freeze':main.params.get('live.freeze'),'mix':main.params.get('live.mix'),'fx_mix':main.params.get('live.fx_mix'),'tape_mix':main.params.get('live.tape_mix'),'worker':bool(main.audio_worker and main.audio_worker.running)})
         original_draw(self,*args,**kwargs)
         if integrated and state['frames'] in (3,4,5,13):
             pg.image.save(self.screen,str(app/('integrated-frame-'+str(state['frames'])+'.png')))
             report['live_waveform_fields']=list(vars(self.waveform))
-        if state['frames']>=(22 if integrated else 3):
+        if state['frames']>=(26 if '--channel-routing' in sys.argv else 22 if integrated else 3):
             pg.image.save(self.screen,str(app/'original-record-page.png'))
             pg.event.post(pg.event.Event(pg.QUIT))
     ui_cls.draw=draw
@@ -144,7 +151,12 @@ try:
         import runpy
         import v4_install
         if hasattr(v4_install,'usb_devices'):
-            v4_install.usb_devices=lambda asound:('plughw:CARD=Series,DEV=0','plughw:CARD=Series,DEV=0')
+            card='AUDIO4c' if '--channel-routing' in sys.argv else 'Series'
+            v4_install.usb_devices=lambda asound:('plughw:CARD='+card+',DEV=0','plughw:CARD='+card+',DEV=0')
+        if '--channel-routing' in sys.argv:
+            import channel_routes
+            configure=channel_routes.configure
+            channel_routes.configure=lambda app,config:configure(app,config,app.parent/'asound')
         if '--system-mapping' in sys.argv:
             import v4_buttons
             original_prepare=v4_buttons.prepare_buttons
@@ -165,6 +177,10 @@ assert state['frames']>=3 and state['worker_constructed']>0 and state['worker_st
 assert state['record_overlay_calls']>0,'Original record page hook was not dispatched'
 if integrated:
     frames=report['frames']
+    if '--channel-routing' in sys.argv:
+        assert any(f['input_index']==1 and f['active'] for f in frames),frames
+        assert any(len(f['outputs'])>=5 for f in frames),frames
+        assert any(f['playback'].endswith('_7_8') for f in frames),frames
     assert any(f['tab']=='FX' and f['active'] and f['worker'] for f in frames),frames
     assert any(f['tab']=='GRAIN' and f['active'] and f['worker'] for f in frames),frames
     assert any(f['freeze']==1 for f in frames),frames

@@ -6,7 +6,7 @@ Extract into `/userdata/roms/ports/` and launch **GrainBrick V4**. No V3 or earl
 
 Target: RG35XX Plus with KNULLI Scarab 20260511. Tested interface: Tascam DR-40X. The app uses KNULLI's system Python 3.12/Pygame/ALSA tools. Connect USB before launch; button mapping uses the existing KNULLI controller profile, with calibration as a fallback.
 
-[Installation, controls, credits and known limits](experimental/v4-live/consolidated/README.md). The audio baseline was tested on-device; the new complete packaging passed standalone host/ARM-emulation checks and awaits one fresh-install handheld check.
+[Installation, controls, credits and known limits](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/blob/84516c922473e22075ff6ddca05166f419b12031/experimental/v4-live/consolidated/README.md). The audio baseline was tested on-device; the new complete packaging passed standalone host/ARM-emulation checks and awaits one fresh-install handheld check.
 
 ---
 

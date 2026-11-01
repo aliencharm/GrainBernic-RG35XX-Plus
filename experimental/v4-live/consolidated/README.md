@@ -1,8 +1,24 @@
-# GrainBrick V4 — standalone 1.2 for RG35XX Plus
+# GrainBrick V4 — routing test 1.3 for RG35XX Plus
 
 **One complete ZIP. No V3 or previous V4 installation is required.**
 
 This is the original GrainBrick beta 1.0 app adapted for RG35XX Plus, with its original features and DSP, plus the latest V4 live-input integration. It includes the original native engine/libraries, RG35XX display/controller adapters, bundled NumPy, resources, original project demo, AMBIENT preset, three LIVE mix knobs and Freeze [Y] hint. Personal samples/recordings/projects are not included or imported from other folders.
+
+## New stereo-pair selection — hardware test build
+
+This build adds per-app ALSA channel routes while keeping the original stereo DSP engine. It uses the interface's existing USB channel layout and does not change its saved internal routing.
+
+For the submitted AUDIO4c configuration, Linux exposes 8 capture and 8 playback channels at 48 kHz, S32_LE. The app offers AUDIO4c pairs 1-2, 3-4, 5-6 and 7-8 in each direction. These are USB channel numbers, not physical-jack or DAW-route names. No 9-10 pair is invented when Linux exposes only 8 channels.
+
+On SAMPLE/LIVE -> RECORD INPUT, the interface/pair name is shown. L2/R2 cycles input pairs in both REC and LIVE views. Changing a live input stops LIVE; press A to restart on the new pair. In REC, the original source selection also uses the new pair list. Do not change input during an active sample recording.
+
+In SETTINGS, the original output selector now lists the interface's output pairs alongside the original internal/HDMI choices. The selection is used by sample playback, LIVE output and subsequent REC monitoring. Prefer selecting routing while audio is stopped. Input/output choices are retained in config.json as input_route/output_route. The default first pair preserves the prior routing.
+
+A generated alsa-routing.conf is local to this app/process. It maps the stereo engine to/from the selected USB channels with unity coefficients; unused hardware output channels are silent. ALSA converts the native interface sample format as needed, retaining the existing stereo engine/recording formats. No global ALSA or interface-firmware settings are edited.
+
+Real host ALSA file/null-plugin tests verify 8-channel S32 capture pair 3-4 to stereo S16 and stereo S16 playback to pair 5-6, including silence on other outputs. ARM-emulated original-app checks verify interface labels, input selection/stop/restart, REC delegation, four output choices, selection of 7-8, and configuration persistence using the supplied device descriptor fixture. Actual AUDIO4c routing still needs on-device testing. Keep standalone 1.2 as the stable fallback.
+
+Send v4.log, audio_process.log and config.json after testing. Please check an input pair other than 1-2 in LIVE and REC, and route output to another available USB pair in the audio4c's existing mixer configuration.
 
 ## Requirements
 
