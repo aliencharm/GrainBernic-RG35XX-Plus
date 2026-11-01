@@ -1,8 +1,26 @@
-# GrainBrick V4 — UI test 1.12 for RG35XX Plus
+# GrainBrick V4 — UI test 1.13 for RG35XX Plus
 
-**UI Test 1.12 is a small update for an existing UI Test 1.11 installation.**
+**UI Test 1.13 is a small update for an existing UI Test 1.12 installation.**
 
 This is the original GrainBrick beta 1.0 app adapted for RG35XX Plus, with its original features and DSP, plus the latest V4 live-input integration. It includes the original native engine/libraries, RG35XX display/controller adapters, bundled NumPy, resources, original project demo, AMBIENT preset, three LIVE mix knobs and Freeze [Y] hint. Personal samples/recordings/projects are not included or imported from other folders.
+
+## UI Test 1.13 darker backgrounds and build credit
+
+The five custom backgrounds are darker while retaining their palette hues. AMBER and all theme accents/text colors are unchanged.
+
+| Theme | Background |
+| --- | --- |
+| MINT | `#050A09` |
+| ICE | `#040911` |
+| VIOLET | `#08050D` |
+| SAGE | `#0B0E08` |
+| SPRUCE | `#030E10` |
+
+The SETTINGS footer credit reads `ANTEVASINBUILD - ON OFFICIAL ETRNLIAM BETA 1.0`, using the original pixel font and footer layout. Footer text is measured before drawing so the longer credit fits alongside existing controls. The credit appears in every theme; AMBER's colors and graphics remain original.
+
+Close GrainBrick and extract `GrainBrick_V4_UI_Test_1.13_Update.zip` over the existing `ports/` directory. Requires installed 1.12. Personal settings/media and audio behavior are retained.
+
+Validation: 32 host tests pass. The ARM-emulated original app verifies all six themes, renders the complete credit through the native footer, and passes TAPE/VISUAL and REC/LIVE controls with audio mocked. SETTINGS screenshots confirm the credit fits between UP/DOWN and B/A CHANGE without overlapping the DSP indicator.
 
 ## UI Test 1.12 approved palette refresh
 

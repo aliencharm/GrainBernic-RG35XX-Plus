@@ -6,14 +6,16 @@ import pygame
 import numpy as np
 from v4_install import write_json
 
+BUILD_CREDIT='ANTEVASINBUILD - ON OFFICIAL ETRNLIAM BETA 1.0'
+
 ROLES=('BG','WHITE','DIM','VERY_DIM','ACCENT','WAVE')
 PALETTES={
     'AMBER':((5,7,8),(235,238,238),(100,110,112),(42,48,50),(210,142,78),(85,95,100)),
-    'MINT':((10,17,16),(142,189,170),(86,117,104),(40,62,52),(155,232,192),(78,157,130)),
-    'ICE':((8,17,30),(143,175,203),(81,107,132),(35,54,79),(131,213,243),(63,142,175)),
-    'VIOLET':((15,11,23),(174,151,195),(111,91,131),(58,42,76),(206,165,242),(130,89,166)),
-    'SAGE':((21,26,16),(170,169,130),(110,117,81),(57,65,43),(224,207,141),(163,149,86)),
-    'SPRUCE':((7,26,29),(117,173,176),(60,106,110),(26,61,64),(56,205,208),(40,127,135)),
+    'MINT':((5,10,9),(142,189,170),(86,117,104),(40,62,52),(155,232,192),(78,157,130)),
+    'ICE':((4,9,17),(143,175,203),(81,107,132),(35,54,79),(131,213,243),(63,142,175)),
+    'VIOLET':((8,5,13),(174,151,195),(111,91,131),(58,42,76),(206,165,242),(130,89,166)),
+    'SAGE':((11,14,8),(170,169,130),(110,117,81),(57,65,43),(224,207,141),(163,149,86)),
+    'SPRUCE':((3,14,16),(117,173,176),(60,106,110),(26,61,64),(56,205,208),(40,127,135)),
 }
 
 class TapeFrames:
@@ -161,6 +163,18 @@ class Themes:
                     else:kwargs[key]=self.roles[role]
             return original_wave(view,surface,rect,*args,**kwargs)
         waveform_cls.draw=wave
+        original_bar=ui_cls.draw_bar_items
+        def bar(ui,items,*args,**kwargs):
+            if main.controls.current_tab=='SETTINGS' and any(label=='UP/DOWN' for label,color in items):
+                # Let the native footer measure the credit alongside both controls.
+                items=list(items);items.insert(1,(BUILD_CREDIT,ui.DIM))
+            return original_bar(ui,items,*args,**kwargs)
+        ui_cls.draw_bar_items=bar
+        original_bar_text=ui_cls.bar_text
+        def bar_text(ui,value,*args,**kwargs):
+            if main.controls.current_tab=='SETTINGS' and value=='BETA 1.0':return
+            return original_bar_text(ui,value,*args,**kwargs)
+        ui_cls.bar_text=bar_text
         original_text=ui_cls.text
         @functools.wraps(original_text)
         def text(ui,value,*args,**kwargs):
