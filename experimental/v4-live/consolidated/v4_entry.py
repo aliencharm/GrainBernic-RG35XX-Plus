@@ -25,7 +25,7 @@ def main():
         for path in locks:
             lock=stack.enter_context(path.open('a'))
             fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-        print('GRAINBRICK V4 UI TEST 1.6:',str(app),flush=True)
+        print('GRAINBRICK V4 UI TEST 1.7:',str(app),flush=True)
         prepare(app)
         config=device_config(app/'config.json')
         if 'V4_USB_NOT_CONNECTED' not in config['capture']:
@@ -47,6 +47,8 @@ def main():
             state['controller']=install_at_boot(original,config)
             original._v4_controller=state['controller']
             if router is not None:router.install(original,state['controller'])
+            from v4_waveform import install as install_waveform
+            install_waveform()
             from v4_record_ui import RecordingUI
             state['record_ui']=RecordingUI(original,state['controller'],router)
             state['record_ui'].install()

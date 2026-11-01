@@ -1,8 +1,16 @@
-# GrainBrick V4 — UI test 1.6 for RG35XX Plus
+# GrainBrick V4 — UI test 1.7 for RG35XX Plus
 
-**UI Test 1.6 is a small update for an existing UI Test 1.5 installation.**
+**UI Test 1.7 is a small update for an existing UI Test 1.6 installation.**
 
 This is the original GrainBrick beta 1.0 app adapted for RG35XX Plus, with its original features and DSP, plus the latest V4 live-input integration. It includes the original native engine/libraries, RG35XX display/controller adapters, bundled NumPy, resources, original project demo, AMBIENT preset, three LIVE mix knobs and Freeze [Y] hint. Personal samples/recordings/projects are not included or imported from other folders.
+
+## UI Test 1.7 continuous waveform display
+
+The bundled original renderer draws 800 separate one-pixel waveform columns over a 964-pixel-wide area. Empty columns between strokes become visible when scaled to the handheld display. This update interpolates the cached display peaks to cover every column, while retaining the original waveform colors, grain boundaries, ROAM range, playhead and drawing order. The source peak data and audio are unchanged. This is a display fix, not an audio-buffer change or a claim of full parity with official beta 1.01.
+
+Close GrainBrick and extract `GrainBrick_V4_UI_Test_1.7_Update.zip` over the existing `ports/` directory. Requires installed 1.6. Only changed files and integrity metadata are included. Audio buffer sizes, LIVE latency, recording behavior, settings, and personal media are unchanged. Please compare the waveform with the same loaded sample and check LIVE/frozen LIVE too.
+
+Validation: 24 consolidated host tests pass. An ARM-emulated original renderer check covers all 965 columns from x=30 to x=994, with the original markers retained. The original 28-frame UI exercise also passes with audio mocked. Real-device display performance still requires testing.
 
 ## UI Test 1.6 update (requires installed UI Test 1.5)
 
