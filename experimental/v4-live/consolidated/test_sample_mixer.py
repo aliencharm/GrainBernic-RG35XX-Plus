@@ -1,4 +1,6 @@
 import types
+import tempfile
+from pathlib import Path
 import unittest
 import numpy as np
 from live_source import SwitchableSource,add_live_parameters
@@ -70,6 +72,57 @@ class SampleMixerTests(unittest.TestCase):
         self.assertFalse(ui.usb_available())
         ui.router=types.SimpleNamespace(inputs=[dict(alias='usb')])
         self.assertTrue(ui.usb_available())
+    def deletion_fixture(self,loaded=False):
+        folder=tempfile.TemporaryDirectory();self.addCleanup(folder.cleanup)
+        root=Path(folder.name);path=root/'test.wav';path.write_bytes(b'test')
+        class Browser:
+            entries=[types.SimpleNamespace(path=str(path),is_dir=False)]
+            def get(self,index):return self.entries[index] if self.entries else None
+            def _inside_root(self,value):return Path(value).is_relative_to(root)
+            def refresh(self):self.entries=[e for e in self.entries if Path(e.path).exists()]
+            def __len__(self):return len(self.entries)
+        bus=add_live_parameters(Bus());worker=types.SimpleNamespace(stops=0)
+        def stop():worker.stops+=1
+        worker.stop=stop
+        main=types.SimpleNamespace(sample_browser=Browser(),controls=types.SimpleNamespace(sample_index=0,set_sample_count=lambda n:None,sample_loaded_path=str(path)),
+            sample=types.SimpleNamespace(path=str(path)) if loaded else None,audio_worker=worker,
+            ui=types.SimpleNamespace(set_sample=lambda sample:None),sample_preview=types.SimpleNamespace(stop=lambda restart:None))
+        ui=RecordingUI(main,types.SimpleNamespace(bus=lambda:bus,message=''))
+        return ui,path,main,bus,worker
+    def test_delete_requires_same_file_confirmation_and_refreshes_browser(self):
+        ui,path,main,bus,worker=self.deletion_fixture()
+        self.assertTrue(ui.delete_sample());self.assertTrue(path.exists())
+        self.assertEqual(ui.pending_delete,path)
+        self.assertTrue(ui.delete_sample());self.assertFalse(path.exists())
+        self.assertEqual(len(main.sample_browser),0);self.assertEqual(main.controls.sample_index,0)
+        self.assertEqual(worker.stops,0)
+    def test_delete_loaded_sample_stops_playback_and_clears_loaded_state(self):
+        ui,path,main,bus,worker=self.deletion_fixture(loaded=True)
+        ui.delete_sample();ui.delete_sample()
+        self.assertEqual(worker.stops,1);self.assertIsNone(main.sample)
+        self.assertIsNone(main.audio_worker);self.assertIsNone(main.dsp)
+        self.assertEqual(bus.get('transport.playing'),0)
+    def test_delete_other_file_keeps_loaded_sample_and_worker(self):
+        ui,path,main,bus,worker=self.deletion_fixture()
+        loaded=types.SimpleNamespace(path=str(path.parent/'other.wav'));main.sample=loaded
+        ui.delete_sample();ui.delete_sample()
+        self.assertIs(main.sample,loaded);self.assertIs(main.audio_worker,worker)
+        self.assertEqual(worker.stops,0)
+    def test_changing_target_requires_a_new_confirmation(self):
+        ui,path,main,bus,worker=self.deletion_fixture()
+        ui.delete_sample()
+        other=path.parent/'other.wav';other.write_bytes(b'other')
+        main.sample_browser.entries[0].path=str(other)
+        ui.delete_sample()
+        self.assertTrue(path.exists());self.assertTrue(other.exists())
+        self.assertEqual(ui.pending_delete,other)
+    def test_delete_cannot_remove_directories_or_outside_browser_root(self):
+        ui,path,main,bus,worker=self.deletion_fixture()
+        main.sample_browser.entries[0].is_dir=True
+        self.assertFalse(ui.delete_sample());self.assertTrue(path.exists())
+        main.sample_browser.entries[0].is_dir=False
+        main.sample_browser._inside_root=lambda path:False
+        self.assertFalse(ui.delete_sample());self.assertTrue(path.exists())
     def test_source_labels_fit_reserved_header_width(self):
         label='LOADED: '+('a very long sample filename/'*5)+'audio.wav'
         fitted=fit_label(label,695,2)

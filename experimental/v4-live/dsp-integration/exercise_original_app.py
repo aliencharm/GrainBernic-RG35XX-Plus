@@ -18,12 +18,12 @@ integrated='--integrated' in sys.argv
 final_entry='--final-entry' in sys.argv
 controller=None
 project_checks=None
-if '--project-playback' in sys.argv or '--sample-mixer' in sys.argv or '--input-unavailable' in sys.argv:
-    checks_file='input_unavailable_regression.py' if '--input-unavailable' in sys.argv else 'sample_mixer_regression.py' if '--sample-mixer' in sys.argv else 'project_regression.py'
+if '--project-playback' in sys.argv or '--sample-mixer' in sys.argv or '--input-unavailable' in sys.argv or '--sample-delete' in sys.argv:
+    checks_file='sample_delete_regression.py' if '--sample-delete' in sys.argv else 'input_unavailable_regression.py' if '--input-unavailable' in sys.argv else 'sample_mixer_regression.py' if '--sample-mixer' in sys.argv else 'project_regression.py'
     path=Path(__file__).resolve().parents[1]/'consolidated'/checks_file
     spec=importlib.util.spec_from_file_location('v4_project_regression',path)
     module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
-    checks_cls=module.InputChecks if '--input-unavailable' in sys.argv else module.MixerChecks if '--sample-mixer' in sys.argv else module.ProjectChecks
+    checks_cls=module.DeleteChecks if '--sample-delete' in sys.argv else module.InputChecks if '--input-unavailable' in sys.argv else module.MixerChecks if '--sample-mixer' in sys.argv else module.ProjectChecks
     project_checks=checks_cls(app);project_checks.prepare()
 state={'installed':False,'frames':0,'worker_constructed':0,'worker_started':0,'worker_stopped':0,'record_overlay_calls':0,'record_start_delegated':0}
 report={}
@@ -164,7 +164,7 @@ def install():
         if project_checks and hasattr(project_checks,'after_draw'):project_checks.after_draw(main,state)
         if integrated and state['frames'] in (1,3,4,5,13,25,26):
             pg.image.save(self.screen,str(app/('integrated-frame-'+str(state['frames'])+'.png')))
-            report['live_waveform_fields']=list(vars(self.waveform))
+            report['live_waveform_fields']=list(getattr(self.waveform,'__dict__',{}))
         if state['frames']>=(28 if '--record-ui' in sys.argv else 26 if '--channel-routing' in sys.argv else 22 if integrated else 3):
             pg.image.save(self.screen,str(app/'original-record-page.png'))
             pg.event.post(pg.event.Event(pg.QUIT))

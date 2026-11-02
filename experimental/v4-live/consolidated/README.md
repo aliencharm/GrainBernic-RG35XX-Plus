@@ -4,6 +4,14 @@
 
 AntevasinBuild, based on the official **ETRNLIAM GrainBrick beta 1.0**, combines the original app/DSP with the tested V4 live-input, routing and UI changes through UI Test 1.13. The proprietary original engine and native libraries remain unchanged. This release consolidates the working build; it does not introduce a new audio algorithm.
 
+## V4.1.6 sample deletion and browser hints
+
+Close the app and merge `GrainBrick_V4.1.6_Update.zip` into an installed V4.1.5 folder, retaining your launcher and personal files.
+
+In the SAMPLE browser, B on a file asks DELETE SAMPLE? and shows its name. Press B again to delete that file or A to cancel. Navigation and mode/tab changes cancel the pending confirmation; B on folders retains the original back action. Deleting the loaded file stops playback and clears the player. Projects referencing a deleted file will need another sample; project JSON is not changed.
+
+The browser hint row reads Y RECORD / SELECT TO SHOW MIXER. Existing recording, mixer and LIVE controls are retained.
+
 ## V4.1.5 mixer layout refinement
 
 For installed V4.1.4, close the app and merge `GrainBrick_V4.1.5_Update.zip` into your existing `ports/` folder. Keep the same launcher and personal files.

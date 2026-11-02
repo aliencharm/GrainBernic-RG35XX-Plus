@@ -13,3 +13,7 @@ OS audio/process boundaries are mocked for UI checks. Device confirmation is nee
 ## V4.1.5 layout refinement
 
 Both mixer rows move up by 50 canvas pixels. A: FREEZE and Y: RECORD SAMPLE share the same font scale, color and position beneath the knobs; the compact ON/OFF switch stays beside Freeze. The browser retains its main-screen role and includes PRESS SELECT TO SHOW MIXER above the footer. The native mixer UI regression passes, including mode transitions, recording, preview and Freeze toggling. Original-renderer screenshots are checked. Package and update-overlay integrity checks pass against V4.1.4. Audio/control implementations are unchanged.
+
+## V4.1.6 sample deletion
+
+51 host tests pass. Added tests cover two-step confirmation, target changes requiring confirmation again, directory/root boundaries, removal of a loaded file with playback stopped, and preservation of a different loaded file/worker. The native deletion regression uses only synthetic TEST_DELETE files in an isolated work installation. It exercises cancellation, navigation cancelling confirmation, two B presses, loaded-file clearing, loading another sample after deletion, deleting the last file and original folder-back behavior. Prompt/browser screenshots are checked in the original renderer. No native DSP or recording behavior is changed. The update overlay is verified against V4.1.5.

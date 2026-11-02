@@ -14,7 +14,39 @@ def fit_label(value,width,scale):
 class RecordingUI:
     def __init__(self,main,controller,router=None):
         self.main=main;self.controller=controller;self.router=router;self.initialized=False
-        self.sample_mixer=False;self.sample_selection=0;self._drawing_browser=False
+        self.sample_mixer=False;self.sample_selection=0;self._drawing_browser=False;self.pending_delete=None
+    def selected_sample_file(self):
+        main=self.main
+        entry=main.sample_browser.get(main.controls.sample_index)
+        if entry is None or getattr(entry,'is_dir',True):return None
+        path=Path(entry.path)
+        if path.is_symlink() or not path.is_file() or not main.sample_browser._inside_root(str(path.resolve())):return None
+        return path.resolve()
+    def delete_sample(self):
+        path=self.selected_sample_file()
+        if path is None:self.pending_delete=None;return False
+        if self.pending_delete!=path:
+            self.pending_delete=path;self.controller.message='';return True
+        self.pending_delete=None
+        main=self.main
+        try:
+            self.stop_preview(restart=True)
+            path.unlink()
+        except OSError as exc:
+            self.controller.message='DELETE FAILED: '+str(exc);return True
+        loaded=getattr(getattr(main,'sample',None),'path',None)
+        if loaded and Path(loaded).resolve()==path:
+            self.controller.bus().set('transport.playing',0)
+            worker=getattr(main,'audio_worker',None)
+            if worker is not None:worker.stop()
+            main.sample=None;main.granular=None;main.dsp=None;main.audio_worker=None
+            main.controls.sample_loaded_path=''
+            main.ui.set_sample(None)
+        main.sample_browser.refresh()
+        count=len(main.sample_browser);main.controls.set_sample_count(count)
+        main.controls.sample_index=max(0,min(main.controls.sample_index,count-1))
+        self.controller.message='DELETED '+path.name
+        return True
     def usb_available(self):
         return bool(self.router is not None and self.router.inputs)
     def preview_sample(self):
@@ -104,6 +136,8 @@ class RecordingUI:
         before=c.before_input
         def before_input():
             before()
+            if self.pending_delete is not None:
+                if main.controls.current_tab!='SAMPLE' or main.record_mode!='browser' or self.selected_sample_file()!=self.pending_delete:self.pending_delete=None
             if main.record_mode=='browser':
                 self.sample_mixer=False
                 if c.mode=='LIVE' and main.controls.current_tab=='SAMPLE':self.set_page('ready')
@@ -116,6 +150,12 @@ class RecordingUI:
             def handle(action,value):
                 if main.controls.current_tab!='SAMPLE':return original(action,value)
                 mode=main.record_mode
+                if mode=='browser' and self.pending_delete is not None and action!='B' and value!=0:
+                    self.pending_delete=None
+                    if action=='A':return True
+                if mode=='browser' and c.mode!='LIVE' and action=='B':
+                    if value==0:return True
+                    if self.delete_sample():return True
                 if mode in ('recording','edit'):
                     if mode=='recording' and action=='Y':
                         if value!=0:main.stop_input_recording_to_editor()
@@ -182,8 +222,14 @@ class RecordingUI:
                 ui.text('INPUT',782,175,2,ui.DIM)
                 self.draw_source_label(ui,782,205,210,2)
                 pygame.draw.rect(ui.screen,ui.BG,(750,226,245,5))
-                ui.text('PRESS SELECT TO SHOW MIXER',55,680,2,ui.DIM)
+                ui.text('Y RECORD  /  SELECT TO SHOW MIXER',55,680,2,ui.DIM)
                 if c.message:ui.text(fit_label(c.message.upper(),914,2),55,660,2,ui.ACCENT)
+                if self.pending_delete is not None:
+                    pygame.draw.rect(ui.screen,ui.BG,(95,280,834,190))
+                    pygame.draw.rect(ui.screen,ui.ACCENT,(95,280,834,190),2)
+                    ui.text('DELETE SAMPLE?',125,310,3,ui.ACCENT)
+                    ui.text(fit_label(self.pending_delete.name,774,2),125,360,2,ui.WHITE)
+                    ui.text('B: DELETE  /  A: CANCEL',125,420,2,ui.WHITE)
             return result
         cls.draw_sample_page=sample
         original_text=cls.text
@@ -201,7 +247,7 @@ class RecordingUI:
             if main.controls.current_tab=='SAMPLE' and not getattr(ui,'info_mode',False):
                 gray=ui.WHITE;accent=ui.ACCENT
                 if main.record_mode=='browser':
-                    items=[('A LOAD',accent),('B BACK',gray),('X LIVE',accent),('Y RECORD',accent),('SELECT MIX',gray),('L2/R2 INPUT',gray),('START PREVIEW',gray)]
+                    items=[('B DELETE',accent),('A CANCEL',gray)] if self.pending_delete else [('A LOAD',accent),('B DELETE' if self.selected_sample_file() else 'B BACK',gray),('X LIVE',accent),('Y RECORD',accent),('SELECT MIX',gray),('L2/R2 INPUT',gray),('START PREVIEW',gray)]
                 elif main.record_mode=='ready':
                     if c.mode=='LIVE':
                         action='Y FREEZE' if c.active() and c.bus().get('transport.playing')>=.5 else 'Y RESUME' if c.active() else 'Y START'
