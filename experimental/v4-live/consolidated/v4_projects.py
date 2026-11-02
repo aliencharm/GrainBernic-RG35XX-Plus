@@ -2,6 +2,7 @@
 from pathlib import Path,PurePosixPath
 import hashlib
 
+SAMPLE_MIX_KEYS=('sample.granular_mix','sample.fx_mix','sample.tape_mix')
 SESSION_KEYS=frozenset(('live.enabled','live.freeze'))
 FACTORY_DEMO='sample grainbrick 1.wav'
 FACTORY_SHA256='a3dad730ac8c64296be3d225803fc6cd2b037c4eb86ea178012bfc2051354d8c'
@@ -42,7 +43,7 @@ class ProjectPlayback:
         c=self.controller
         if c.active():c.stop_live()
         else:c.restore_live_output()
-        clear_session(c.bus())
+        clear_session(c.bus());c.mode='REC'
         self.main.record_mode='browser'
         ui=getattr(self.main,'ui',None)
         if ui is not None:
@@ -68,6 +69,8 @@ class ProjectPlayback:
             if isinstance(values,dict):
                 values=sound_values(values)
                 values.pop('transport.playing',None)
+                for key in SAMPLE_MIX_KEYS:
+                    if key in bus.params:values.setdefault(key,1.)
             bus.set('transport.playing',0)
             return original_apply(manager,bus,values)
         project_cls.apply_parameters=apply

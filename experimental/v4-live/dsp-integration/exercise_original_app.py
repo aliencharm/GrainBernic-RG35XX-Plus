@@ -18,11 +18,13 @@ integrated='--integrated' in sys.argv
 final_entry='--final-entry' in sys.argv
 controller=None
 project_checks=None
-if '--project-playback' in sys.argv:
-    path=Path(__file__).resolve().parents[1]/'consolidated/project_regression.py'
+if '--project-playback' in sys.argv or '--sample-mixer' in sys.argv:
+    checks_file='sample_mixer_regression.py' if '--sample-mixer' in sys.argv else 'project_regression.py'
+    path=Path(__file__).resolve().parents[1]/'consolidated'/checks_file
     spec=importlib.util.spec_from_file_location('v4_project_regression',path)
     module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
-    project_checks=module.ProjectChecks(app);project_checks.prepare()
+    checks_cls=module.MixerChecks if '--sample-mixer' in sys.argv else module.ProjectChecks
+    project_checks=checks_cls(app);project_checks.prepare()
 state={'installed':False,'frames':0,'worker_constructed':0,'worker_started':0,'worker_stopped':0,'record_overlay_calls':0,'record_start_delegated':0}
 report={}
 
@@ -68,8 +70,8 @@ def install():
             if '--channel-routing' in sys.argv:
                 actions={1:'X',2:'R2',3:'A',4:'TAB_NEXT',5:'TAB_NEXT',6:'TAB_PREV',7:'TAB_PREV',8:'Y',9:'RIGHT',10:'DOWN',11:'LEFT',12:'DOWN',13:'LEFT',14:'UP',15:'RIGHT',16:'UP',17:'RIGHT',18:'L2',19:'A',20:'B',21:'X',22:'R2',23:'A',24:'B',25:'EXIT'}
             if '--record-ui' in sys.argv:
-                actions={1:'X',2:'R2',3:'Y',4:'TAB_NEXT',5:'TAB_NEXT',6:'TAB_PREV',7:'TAB_PREV',8:'Y',9:'RIGHT',10:'DOWN',11:'LEFT',12:'DOWN',13:'LEFT',14:'UP',15:'RIGHT',16:'UP',17:'RIGHT',18:'L2',19:'Y',20:'B',21:'B',22:'X',23:'R2',24:'Y',25:'Y',26:'START',27:'EXIT'}
-            if project_checks:actions={2:'START',4:'START',6:'TAB_NEXT',8:'START',10:'EXIT'}
+                actions={1:'X',2:'R2',3:'Y',4:'TAB_NEXT',5:'TAB_NEXT',6:'TAB_PREV',7:'TAB_PREV',8:'Y',9:'RIGHT',10:'DOWN',11:'LEFT',12:'DOWN',13:'LEFT',14:'UP',15:'RIGHT',16:'UP',17:'RIGHT',18:'L2',19:'Y',20:'B',21:'B',23:'R2',24:'Y',25:'Y',26:'START',27:'EXIT'}
+            if project_checks:actions=getattr(project_checks,'actions',{2:'START',4:'START',6:'TAB_NEXT',8:'START',10:'EXIT'})
             action=actions.get(state['frames'])
             return [(action,None)] if action else []
         return [('EXIT',None) for ev in pg.event.get() if ev.type==pg.QUIT]
@@ -159,6 +161,7 @@ def install():
                 main.ui.audio_output_id=main.ui._audio_outputs[-1][0]
             report.setdefault('frames',[]).append({'frame':state['frames'],'tab':main.controls.current_tab,'record_mode':main.record_mode,'mode':controller.mode,'active':controller.active(),'input_index':main.record_source_index,'capture':controller.config['capture'],'playback':controller.config['playback'],'outputs':list(main.ui._audio_outputs),'freeze':main.params.get('live.freeze'),'mix':main.params.get('live.mix'),'fx_mix':main.params.get('live.fx_mix'),'tape_mix':main.params.get('live.tape_mix'),'worker':bool(main.audio_worker and main.audio_worker.running)})
         original_draw(self,*args,**kwargs)
+        if project_checks and hasattr(project_checks,'after_draw'):project_checks.after_draw(main,state)
         if integrated and state['frames'] in (1,3,4,5,13,25,26):
             pg.image.save(self.screen,str(app/('integrated-frame-'+str(state['frames'])+'.png')))
             report['live_waveform_fields']=list(vars(self.waveform))

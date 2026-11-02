@@ -91,6 +91,17 @@ class ProjectTests(unittest.TestCase):
             self.assertIn('grain.size',snapshot)
             self.assertEqual(main.params.get('live.enabled'),1)
 
+    def test_old_projects_default_sample_mixes_to_full_and_new_values_are_kept(self):
+        with tempfile.TemporaryDirectory() as root:
+            main,c,manager,State=self.fixture(root)
+            keys=('sample.granular_mix','sample.fx_mix','sample.tape_mix')
+            for key in keys:main.params.set(key,.2)
+            manager.apply_parameters(main.params,{'grain.size':.3})
+            self.assertTrue(all(main.params.get(key)==1. for key in keys))
+            manager.apply_parameters(main.params,{'sample.fx_mix':.4})
+            self.assertEqual(main.params.get('sample.fx_mix'),.4)
+            self.assertEqual(manager.snapshot_parameters(main.params)['sample.fx_mix'],.4)
+
     def test_moved_media_subpaths_are_relocated_without_basename_guessing(self):
         with tempfile.TemporaryDirectory() as root:
             app=Path(root);(app/'samples/sub').mkdir(parents=True)

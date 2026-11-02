@@ -4,6 +4,16 @@
 
 AntevasinBuild, based on the official **ETRNLIAM GrainBrick beta 1.0**, combines the original app/DSP with the tested V4 live-input, routing and UI changes through UI Test 1.13. The proprietary original engine and native libraries remain unchanged. This release consolidates the working build; it does not introduce a new audio algorithm.
 
+## V4.1.3 SAMPLE and LIVE mixer update
+
+Close GrainBrick and extract `GrainBrick_V4.1.3_Update.zip` into the existing `ports/` directory, merging `grainbrick-v4` with your installed V4.1.2 folder. Keep the existing launcher. Personal samples, projects, recordings and settings are preserved.
+
+SAMPLE opens the sample browser. SELECT opens its playback mixer with separate GRANULAR MIX, FX MIX and TAPE MIX controls; SELECT or B returns to the browser. Up/down selects a mix and left/right adjusts it. A or START plays/pauses the loaded sample from the mixer. Y records using the original recording/editor workflow. Footer hints show these actions.
+
+X switches from SAMPLE to the LIVE mixer in READY state; Y starts LIVE. X returns to the SAMPLE browser. The mode and interface labels sit further right, with long header text shortened to fit. SELECT retains its original behavior in other tabs, and START + SELECT still exits.
+
+SAMPLE mix values are separate from LIVE and saved with project parameters. Older projects default all three to 100%, retaining original playback. GRANULAR MIX blends the original granular player with a native straight file player; FX MIX and TAPE MIX blend their respective native stages. The native effects keep running when their mix is zero. Audio buffer timing and saved recording audio are unchanged.
+
 ## V4.1.2 load projects paused
 
 Loading a project now leaves transport paused even if the saved project has `transport.playing=1`. The original file worker remains ready, but no playback begins until you press Play. START preview remains available in the sample browser. Existing projects and their sound parameters are retained; no project JSON is rewritten automatically.
@@ -48,7 +58,7 @@ The ZIP contains only the original factory demo WAV and AMBIENT project. It does
 ## Included features
 
 - Original granular instrument, ORBIX, FX, tape, sample editing and project workflow.
-- REC/LIVE selection and controls integrated into the original UI.
+- SAMPLE/LIVE selection, with separate three-control playback mixers.
 - USB LIVE input with GRANULAR, FX and TAPE mix controls; freeze holds the buffer while SIZE changes retain the frozen read anchor.
 - Stereo input/output pair selection, including the tested AUDIO4c USB pairs 1-2, 3-4, 5-6 and 7-8. Names identify USB channels, not physical jacks or DAW routes.
 - Short TASCAM / AUDIO4c labels in input selection and output settings.
@@ -58,11 +68,11 @@ The ZIP contains only the original factory demo WAV and AMBIENT project. It does
 
 ## Controls
 
-On **SAMPLE/LIVE**, X changes REC/LIVE; Y opens and starts the selected mode. A loads a sample, B goes back, START previews a sample, and L2/R2 changes the input pair. START + SELECT exits globally.
+On **SAMPLE/LIVE**, X switches SAMPLE browser / LIVE READY. In the SAMPLE browser, A loads, START previews, SELECT opens the SAMPLE mixer, Y records and L2/R2 selects the input pair. In the SAMPLE mixer, up/down selects a control, left/right adjusts, A/START plays or pauses, and SELECT/B returns to the browser.
 
-In LIVE, up/down selects GRANULAR / FX / TAPE MIX, and left/right adjusts it. Y freezes/unfreezes while running, or starts/resumes when stopped/paused. B stops/backs out and X changes mode. Input changes stop LIVE; restart it on the chosen pair.
+In LIVE, up/down selects GRANULAR / FX / TAPE MIX and left/right adjusts. Y starts, freezes or resumes. B stops active LIVE, then returns to SAMPLE when stopped. Input changes stop LIVE; restart it on the chosen pair.
 
-In REC, Y starts the original recorder. Y or B stops to the original recording editor. Original edit/save controls remain. Do not change input during an active recording. REC uses dry software monitoring; saved WAV audio is not faded, trimmed or otherwise modified to suppress startup clicks.
+SAMPLE recording retains the original recorder and editor. Y or B stops recording to the editor. Do not change input during recording. Saved WAV audio is not faded, trimmed or otherwise modified to suppress startup clicks. START + SELECT exits globally.
 
 In **SETTINGS → THEME**, use A/B to cycle. Theme changes save immediately, independently of SAVE PARAMS ON EXIT. Audio output selection remains in SETTINGS. Footer hints show current actions; the native application's original control behavior is retained elsewhere.
 
@@ -98,7 +108,7 @@ Original licenses, third-party notices and supplied compliance sources are retai
 
 ## Validation
 
-The clean archive passes its manifest, layout, factory-content and license checks. All 32 host tests pass. The pruned NumPy runtime, original native DSP chain and fresh application startup/control flow pass ARM-emulated checks, including a separate no-USB launch. Hardware/audio-process boundaries are mocked in the UI tests. The new clean install still needs on-device confirmation; detailed release evidence is in the repository’s `VALIDATION-4.1.md`.
+The clean archive passes its manifest, layout, factory-content and license checks. All 44 host tests pass. The pruned NumPy runtime, original native DSP chain and fresh application startup/control flow pass ARM-emulated checks, including a separate no-USB launch. Hardware/audio-process boundaries are mocked in the UI tests. The V4.1 baseline was confirmed on device. The new mixer needs device confirmation; see `VALIDATION-4.1.3.md` in the repository.
 
 ## Known limits and diagnostics
 

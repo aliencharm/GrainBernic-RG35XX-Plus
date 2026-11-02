@@ -30,7 +30,7 @@ files={f'GrainBrick V{launcher_version}.sh':root/'GrainBrick V4.sh',
 for name,expected in baseline['files'].items():
     path=root.parent/'dsp-integration'/name
     assert hashlib.sha256(path.read_bytes()).hexdigest()==expected,'Audio baseline changed: '+name
-    files['grainbrick-v4/'+name]=(root/name) if name in ('record_monitor.py','live_source.py') else path
+    files['grainbrick-v4/'+name]=(root/name) if name in ('record_monitor.py','live_source.py','stage_mix.py') else path
 for path in sorted(source.iterdir()):
     if path.is_file() and (path.suffix=='.so' or '.so.' in path.name or path.name in ('README_EN.md','THIRD_PARTY_NOTICES.md')):
         files['grainbrick-v4/'+path.name]=path
@@ -51,7 +51,7 @@ manifest={'version':VERSION,'kind':'standalone','original_main_sha256':EXPECTED_
           'release_name':f'GrainBrick V{VERSION}','consolidates':'UI Test 1.13',
           'packaging':'Runtime only; NumPy tests, compiler tools, headers and typing stubs omitted',
           'audio_baseline':baseline,'sha256':{name:hashlib.sha256(path.read_bytes()).hexdigest() for name,path in files.items()}}
-manifest['audio_overrides']={'live_source.py':'Freeze holds read headroom across size/pitch changes; unfrozen and original file audio unchanged','record_monitor.py':'Output-only 10 ms monitor startup fade; saved recordings unchanged'}
+manifest['audio_overrides']={'stage_mix.py':'Separate sample FX/Tape blends default to original 100%; LIVE blends unchanged','live_source.py':'Frozen LIVE read anchor preserved; sample granular blend defaults to original 100%','record_monitor.py':'Output-only 10 ms monitor startup fade; saved recordings unchanged'}
 manifest['immutable_paths']=[name for name in files if name.startswith('grainbrick-v4/') and not name.startswith(('grainbrick-v4/samples/','grainbrick-v4/projects/'))]
 release=root.parent/f'releases/GrainBrick_V{VERSION}_Standalone.zip'
 with zipfile.ZipFile(release,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as archive:
