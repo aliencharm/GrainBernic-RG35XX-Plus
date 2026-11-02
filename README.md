@@ -2,7 +2,7 @@
 
 [**Download GrainBrick V4.1 Standalone**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.1_Standalone.zip)
 
-[**V4.1.4 input, preview and layout update — for installed V4.1.3**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.1.4_Update.zip)
+[**V4.1.5 mixer layout refinement — for installed V4.1.4**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.1.5_Update.zip)
 
 SELECT opens a SAMPLE playback mixer with GRANULAR, FX and TAPE MIX; the footer shows the shortcut. X switches between the SAMPLE browser and LIVE READY. Recording and project playback fixes are retained. Merge the update into the existing installation with the app closed. See [controls and update notes](experimental/v4-live/consolidated/README.md) and [validation](experimental/v4-live/consolidated/VALIDATION-4.1.4.md).
 

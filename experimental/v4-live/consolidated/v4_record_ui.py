@@ -182,6 +182,7 @@ class RecordingUI:
                 ui.text('INPUT',782,175,2,ui.DIM)
                 self.draw_source_label(ui,782,205,210,2)
                 pygame.draw.rect(ui.screen,ui.BG,(750,226,245,5))
+                ui.text('PRESS SELECT TO SHOW MIXER',55,680,2,ui.DIM)
                 if c.message:ui.text(fit_label(c.message.upper(),914,2),55,660,2,ui.ACCENT)
             return result
         cls.draw_sample_page=sample
@@ -228,30 +229,29 @@ class RecordingUI:
             ui.text('INPUT / USB AUDIO',55,120,2,ui.DIM)
             self.draw_source_label(ui,55,165,695,4)
             ui.text(self.main.current_record_source().get('format','48 KHZ / STEREO USB'),55,220,2)
-            frozen=c.bus().get('live.freeze')>=.5
-            ui.text('FREEZE',55,275,3,ui.WHITE)
-            pygame.draw.rect(ui.screen,ui.ACCENT if frozen else ui.DIM,(205,270,96,32),2,border_radius=7)
-            ui.text('ON' if frozen else 'OFF',241 if frozen else 235,278,2,ui.ACCENT if frozen else ui.WHITE)
             from original_adapter import MIX_CONTROLS
             controls=MIX_CONTROLS;selected_index=c.mix_selection
         else:
             ui.text('INPUT / USB AUDIO',55,120,2,ui.DIM)
             self.draw_source_label(ui,55,165,695,4)
             ui.text(self.main.current_record_source().get('format','48 KHZ / STEREO USB'),55,220,2)
-            ui.text('Y: RECORD SAMPLE',55,275,3,ui.WHITE)
             controls=SAMPLE_MIX_CONTROLS;selected_index=self.sample_selection
         for index,(label,key) in enumerate(controls):
             cx=200+index*310;selected=index==selected_index;color=ui.ACCENT if selected else ui.WHITE
-            ui.text(label,cx-len(label)*9,345,3,color)
-            ui._draw_comp_knob(cx,440,58,c.bus().get(key),selected)
+            ui.text(label,cx-len(label)*9,295,3,color)
+            ui._draw_comp_knob(cx,390,58,c.bus().get(key),selected)
             value=str(round(c.bus().get(key)*100))+'%'
-            ui.text(value,cx-len(value)*9,515,3,color)
+            ui.text(value,cx-len(value)*9,465,3,color)
         if live:
-            ui.text('A: FREEZE ON / OFF',55,585,2)
-            ui.text('HOLD THE LIVE BUFFER',55,625,2)
+            frozen=c.bus().get('live.freeze')>=.5
+            ui.text('A: FREEZE',55,545,3,ui.WHITE)
+            pygame.draw.rect(ui.screen,ui.ACCENT if frozen else ui.DIM,(250,540,96,32),2,border_radius=7)
+            ui.text('ON' if frozen else 'OFF',286 if frozen else 280,548,2,ui.ACCENT if frozen else ui.WHITE)
+            ui.text('HOLD THE LIVE BUFFER',55,600,2,ui.DIM)
         else:
-            ui.text('LOADED SAMPLE',55,570,2,ui.DIM)
+            ui.text('Y: RECORD SAMPLE',55,545,3,ui.WHITE)
+            ui.text('LOADED SAMPLE',55,600,2,ui.DIM)
             sample=getattr(self.main,'sample',None)
             label=Path(sample.path).name if sample is not None else 'LOAD OR RECORD A SAMPLE FIRST'
-            ui.text(fit_label(label,914,2),55,605,2,ui.ACCENT)
+            ui.text(fit_label(label,914,2),55,630,2,ui.ACCENT)
         if c.message and 'LIVE ON' not in c.message:ui.text(fit_label(c.message.upper(),914,2),55,660,2,ui.ACCENT)

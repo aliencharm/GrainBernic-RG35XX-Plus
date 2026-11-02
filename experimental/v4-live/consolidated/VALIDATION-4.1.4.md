@@ -9,3 +9,7 @@ The no-input regression boots the original app with no USB routes and Internal o
 Original-renderer screenshots are inspected for coherent SAMPLE/LIVE layout, input labels, smaller Freeze switch, shortened separator and footer hints. The full target archive is verified and the update overlay checked against V4.1.3. Personal media/configuration/state are excluded.
 
 OS audio/process boundaries are mocked for UI checks. Device confirmation is needed for hardware sound and interaction. No buffer timing, native DSP or saved recording audio changes are included.
+
+## V4.1.5 layout refinement
+
+Both mixer rows move up by 50 canvas pixels. A: FREEZE and Y: RECORD SAMPLE share the same font scale, color and position beneath the knobs; the compact ON/OFF switch stays beside Freeze. The browser retains its main-screen role and includes PRESS SELECT TO SHOW MIXER above the footer. The native mixer UI regression passes, including mode transitions, recording, preview and Freeze toggling. Original-renderer screenshots are checked. Package and update-overlay integrity checks pass against V4.1.4. Audio/control implementations are unchanged.
