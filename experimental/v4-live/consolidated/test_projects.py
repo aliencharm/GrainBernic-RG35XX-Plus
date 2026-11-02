@@ -46,7 +46,7 @@ class ProjectTests(unittest.TestCase):
         manager=Manager()
         def load_sample(entry):main.sample=types.SimpleNamespace(path=entry.path);return True
         def open_project(name):
-            manager.apply_parameters(bus,{'live.enabled':1,'live.freeze':1,'grain.size':.5})
+            manager.apply_parameters(bus,{'live.enabled':1,'live.freeze':1,'grain.size':.5,'transport.playing':1})
             controls.project_status='LOADED '+name
         main.load_sample=load_sample;main.open_project=open_project
         class Controller:
@@ -70,6 +70,7 @@ class ProjectTests(unittest.TestCase):
             self.assertEqual(main.params.get('live.enabled'),0)
             self.assertEqual(main.params.get('live.freeze'),0)
             self.assertEqual(main.params.get('grain.size'),.5)
+            self.assertEqual(main.params.get('transport.playing'),0)
             self.assertEqual(main.record_mode,'browser')
             self.assertEqual(main.ui.record_mode,'browser')
             self.assertEqual(main.controls.sample_index,1)

@@ -4,6 +4,12 @@
 
 AntevasinBuild, based on the official **ETRNLIAM GrainBrick beta 1.0**, combines the original app/DSP with the tested V4 live-input, routing and UI changes through UI Test 1.13. The proprietary original engine and native libraries remain unchanged. This release consolidates the working build; it does not introduce a new audio algorithm.
 
+## V4.1.2 load projects paused
+
+Loading a project now leaves transport paused even if the saved project has `transport.playing=1`. The original file worker remains ready, but no playback begins until you press Play. START preview remains available in the sample browser. Existing projects and their sound parameters are retained; no project JSON is rewritten automatically.
+
+Close GrainBrick and extract `GrainBrick_V4.1.2_Update.zip` into the existing `ports/` directory, merging its `grainbrick-v4` folder with yours. Supports installed V4.1 or V4.1.1. Keep your current folder, launcher, settings and media.
+
 ## V4.1.1 project/playback update
 
 For an existing V4.1 installation, close the app and extract `GrainBrick_V4.1.1_Update.zip` into the same `ports/` directory, accepting replacement of the included application files. Keep your existing `grainbrick-v4` folder and **GrainBrick V4.1** launcher. This small update does not contain or overwrite projects, samples, recordings, settings or theme preferences.

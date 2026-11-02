@@ -42,6 +42,7 @@ class ProjectChecks:
         main.open_project('TEST_LIVE')
         assert not controller.active()
         assert main.audio_worker.running
+        assert main.params.get('transport.playing')==0
         main.controls.tab_index=main.controls.TABS.index('SAMPLE');controller.before_input()
         assert main.record_mode=='browser'
         assert main.sample_browser.get(main.controls.sample_index).path==str(main.sample.path)
@@ -50,6 +51,7 @@ class ProjectChecks:
             main.open_project(name)
             assert Path(main.sample.path).name==expected,(name,main.sample.path)
             assert main.controls.project_status.startswith('LOADED')
+            assert main.params.get('transport.playing')==0
             print('PASS relocated project',name,main.sample.path,flush=True)
         main.open_project('TEST_MISSING')
         assert main.controls.project_status=='SAMPLE NOT FOUND',main.controls.project_status

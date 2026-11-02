@@ -37,3 +37,7 @@ The native DSP libraries render the signal; preview/process/ALSA boundaries are 
 ## Limits
 
 These fixtures reproduce the code-level faults without the user's specific project JSON or logs. Physical USB output and the affected projects need a handheld check. Paths that cannot be resolved unambiguously are left with an explicit error. The separate AUDIO4c saved-recording startup click remains unresolved.
+
+## V4.1.2 follow-up: load paused
+
+Project application now ignores saved `transport.playing` and clears transport before loading/restarting the file worker. Existing sound parameters and project JSON are retained. The 36-test host suite passes. Native project fixtures explicitly saved as playing now load paused, and browser START preview and explicit GRAIN Play still pass. The small overlay is verified against both original V4.1 and V4.1.1 packages.

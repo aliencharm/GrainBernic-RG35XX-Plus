@@ -65,7 +65,11 @@ class ProjectPlayback:
         project_cls=__import__('engine.project_manager',fromlist=['ProjectManager']).ProjectManager
         original_apply=project_cls.apply_parameters
         def apply(manager,bus,values):
-            return original_apply(manager,bus,sound_values(values) if isinstance(values,dict) else values)
+            if isinstance(values,dict):
+                values=sound_values(values)
+                values.pop('transport.playing',None)
+            bus.set('transport.playing',0)
+            return original_apply(manager,bus,values)
         project_cls.apply_parameters=apply
         original_snapshot=project_cls.snapshot_parameters
         project_cls.snapshot_parameters=lambda manager,bus:sound_values(original_snapshot(manager,bus))
@@ -102,9 +106,11 @@ class ProjectPlayback:
             main.load_sample=load_sample
             original_open=main.open_project
             def open_project(name):
+                c.bus().set('transport.playing',0)
                 if getattr(main,'sample_preview',None) is not None:main.sample_preview.stop(restart=False)
                 self.file_mode()
                 result=original_open(name)
+                c.bus().set('transport.playing',0)
                 self.file_mode();self.select_loaded_sample()
                 # Same-sample project loads may skip native load_sample. Restart the
                 # original file worker if LIVE/preview previously owned the device.
