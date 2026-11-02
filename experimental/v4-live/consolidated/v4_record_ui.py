@@ -14,7 +14,15 @@ def fit_label(value,width,scale):
 class RecordingUI:
     def __init__(self,main,controller,router=None):
         self.main=main;self.controller=controller;self.router=router;self.initialized=False
-        self.sample_mixer=False;self.sample_selection=0;self._drawing_browser=False;self.pending_delete=None
+        self.sample_mixer=False;self.sample_selection=0;self._drawing_browser=False;self.pending_delete=None;self._menu_back=False
+    def parent_folder(self):
+        self.pending_delete=None;self.controller.message=''
+        browser=self.main.sample_browser
+        parent=Path(browser.current_dir).resolve().parent
+        if not browser._inside_root(str(parent)):return
+        self.stop_preview(restart=True)
+        browser.current_dir=str(parent);browser.refresh()
+        self.main.controls.set_sample_count(len(browser));self.main.controls.sample_index=0
     def selected_sample_file(self):
         main=self.main
         entry=main.sample_browser.get(main.controls.sample_index)
@@ -126,9 +134,21 @@ class RecordingUI:
             main.ui.refresh_audio_outputs()
             return main.resolve_output(main.ui.audio_output_id)
         c.choose_output=choose_output
+        original_events=pygame.event.get
+        def events(*args,**kwargs):
+            result=[]
+            for event in original_events(*args,**kwargs):
+                browser=main.controls.current_tab=='SAMPLE' and main.record_mode=='browser'
+                if browser and event.type in (pygame.JOYBUTTONDOWN,pygame.JOYBUTTONUP) and event.button==14:
+                    if event.type==pygame.JOYBUTTONDOWN:self._menu_back=True
+                else:result.append(event)
+            return result
+        pygame.event.get=events
         previous_filter=c.filter_record_actions
         def filter_actions(actions):
             actions=previous_filter(actions)
+            if self._menu_back:
+                self._menu_back=False;actions=list(actions)+[('SAMPLE_BACK',None)]
             if main.controls.current_tab=='SAMPLE' and c.mode!='LIVE' and main.record_mode in ('browser','ready'):
                 return [('SAMPLE_MIXER' if action=='SELECT' else action,value) for action,value in actions]
             return actions
@@ -150,6 +170,10 @@ class RecordingUI:
             def handle(action,value):
                 if main.controls.current_tab!='SAMPLE':return original(action,value)
                 mode=main.record_mode
+                if mode=='browser' and action in ('SAMPLE_BACK','MENU','LEFT'):
+                    if value!=0:
+                        self.parent_folder()
+                    return True
                 if mode=='browser' and self.pending_delete is not None and action!='B' and value!=0:
                     self.pending_delete=None
                     if action=='A':return True
@@ -247,7 +271,7 @@ class RecordingUI:
             if main.controls.current_tab=='SAMPLE' and not getattr(ui,'info_mode',False):
                 gray=ui.WHITE;accent=ui.ACCENT
                 if main.record_mode=='browser':
-                    items=[('B DELETE',accent),('A CANCEL',gray)] if self.pending_delete else [('A LOAD',accent),('B DELETE' if self.selected_sample_file() else 'B BACK',gray),('X LIVE',accent),('Y RECORD',accent),('SELECT MIX',gray),('L2/R2 INPUT',gray),('START PREVIEW',gray)]
+                    items=[('B DELETE',accent),('A CANCEL',gray)] if self.pending_delete else [('A LOAD',accent),('B DELETE' if self.selected_sample_file() else 'B BACK',gray),('X LIVE',accent),('MENU BACK',gray),('SELECT MIX',gray),('L2/R2 INPUT',gray),('START PREVIEW',gray)]
                 elif main.record_mode=='ready':
                     if c.mode=='LIVE':
                         action='Y FREEZE' if c.active() and c.bus().get('transport.playing')>=.5 else 'Y RESUME' if c.active() else 'Y START'

@@ -4,6 +4,12 @@
 
 AntevasinBuild, based on the official **ETRNLIAM GrainBrick beta 1.0**, combines the original app/DSP with the tested V4 live-input, routing and UI changes through UI Test 1.13. The proprietary original engine and native libraries remain unchanged. This release consolidates the working build; it does not introduce a new audio algorithm.
 
+## V4.1.7 browser navigation
+
+Close GrainBrick and merge `GrainBrick_V4.1.7_Update.zip` into your installed V4.1.6 folder. MENU goes to the parent folder from the SAMPLE browser, including when a sample file is selected. LEFT provides the same action if MENU was not calibrated. B retains confirmed sample deletion. The footer includes MENU BACK; all other tabs keep their original MENU behavior.
+
+A charging/data OTG splitter requires the handheld to remain the USB host while charging. App detection uses ALSA USB cards and stream descriptors; the connection path through a hub is not filtered. A missing interface through a splitter needs USB/ALSA evidence before an app change can be established. Connect before launch. The separately downloadable `GrainBrick_USB_Check.sh` can be placed in ports and run with the affected connection. It writes `GrainBrick_USB_Report.txt` beside itself without changing USB, audio, configuration or power settings. Compare direct and splitter connections, saving each report separately.
+
 ## V4.1.6 sample deletion and browser hints
 
 Close the app and merge `GrainBrick_V4.1.6_Update.zip` into an installed V4.1.5 folder, retaining your launcher and personal files.

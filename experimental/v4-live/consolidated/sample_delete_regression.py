@@ -1,9 +1,10 @@
 """Destructive actions are exercised only on synthetic isolated samples."""
 from pathlib import Path
 import shutil
+import json
 
 class DeleteChecks:
-    actions={1:'B',2:'A',3:'B',4:'DOWN',5:'UP',6:'B',7:'B',8:'X',9:'X',10:'A',11:'B',12:'B',13:'B',14:'EXIT'}
+    actions={1:'B',2:'A',3:'B',4:'DOWN',5:'UP',6:'B',7:'B',8:'X',9:'X',10:'A',11:'B',12:'B',13:'MENU',14:'EXIT'}
     def __init__(self,app):self.app=Path(app)
     def prepare(self):
         assert 'work' in self.app.parts or self.app.is_relative_to(Path('/tmp'))
@@ -18,6 +19,22 @@ class DeleteChecks:
         main.load_sample(entry)
         main.controls.tab_index=main.controls.TABS.index('SAMPLE')
         assert main.record_mode=='browser'
+        import pygame
+        mapping=json.loads((self.app/'gb_buttons.json').read_text())
+        physical=next(int(k) for k,v in mapping['buttons'].items() if v==14)
+        pygame.event.post(pygame.event.Event(pygame.JOYBUTTONDOWN,button=physical,joy=0))
+        pygame.event.post(pygame.event.Event(pygame.JOYBUTTONUP,button=physical,joy=0))
+        events=pygame.event.get()
+        assert not any(e.type in (pygame.JOYBUTTONDOWN,pygame.JOYBUTTONUP) and e.button==14 for e in events)
+        actions=c.filter_record_actions([])
+        assert ('SAMPLE_BACK',None) in actions,actions
+        for action,value in actions:main.handle_record_action(action,value)
+        assert main.sample_browser.current_dir!=str(self.folder)
+        main.load_sample(entry);main.controls.tab_index=main.controls.TABS.index('SAMPLE')
+        main.handle_record_action('LEFT',None)
+        assert main.sample_browser.current_dir!=str(self.folder)
+        main.load_sample(entry);main.controls.tab_index=main.controls.TABS.index('SAMPLE')
+        print('PASS physical MENU and LEFT parent navigation with file selected',flush=True)
     def frame(self,main,state):
         n=state['frames']
         if n in (2,3,4,5,6,7):assert self.files[0].exists()

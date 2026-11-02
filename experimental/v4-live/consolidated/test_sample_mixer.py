@@ -89,6 +89,17 @@ class SampleMixerTests(unittest.TestCase):
             ui=types.SimpleNamespace(set_sample=lambda sample:None),sample_preview=types.SimpleNamespace(stop=lambda restart:None))
         ui=RecordingUI(main,types.SimpleNamespace(bus=lambda:bus,message=''))
         return ui,path,main,bus,worker
+    def test_parent_navigation_cancels_delete_and_stays_inside_sample_root(self):
+        ui,path,main,bus,worker=self.deletion_fixture(loaded=True)
+        nested=path.parent/'nested';nested.mkdir()
+        main.sample_browser.current_dir=str(nested)
+        ui.pending_delete=path
+        ui.parent_folder()
+        self.assertEqual(main.sample_browser.current_dir,str(path.parent))
+        self.assertIsNone(ui.pending_delete);self.assertTrue(path.exists())
+        self.assertEqual(worker.stops,0)
+        ui.parent_folder()
+        self.assertEqual(main.sample_browser.current_dir,str(path.parent))
     def test_delete_requires_same_file_confirmation_and_refreshes_browser(self):
         ui,path,main,bus,worker=self.deletion_fixture()
         self.assertTrue(ui.delete_sample());self.assertTrue(path.exists())
