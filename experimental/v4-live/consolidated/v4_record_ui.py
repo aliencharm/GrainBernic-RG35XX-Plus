@@ -15,6 +15,17 @@ class RecordingUI:
     def __init__(self,main,controller,router=None):
         self.main=main;self.controller=controller;self.router=router;self.initialized=False
         self.sample_mixer=False;self.sample_selection=0;self._drawing_browser=False
+    def usb_available(self):
+        return bool(self.router is not None and self.router.inputs)
+    def preview_sample(self):
+        main=self.main
+        entry=main.sample_browser.get(main.controls.sample_index)
+        path=getattr(entry,'path',None)
+        if not path:return
+        try:
+            device=main.resolve_output(main.ui.audio_output_id)
+            main.sample_preview.toggle(path,getattr(main,'audio_worker',None),device)
+        except Exception as exc:self.controller.message=str(exc)
     def mode_label(self):return 'LIVE' if self.controller.mode=='LIVE' else 'SAMPLE'
     def source_label(self):
         try:return self.main.current_record_source()['label']
@@ -54,6 +65,8 @@ class RecordingUI:
         else:
             self.stop_preview(restart=True);self.sample_mixer=True;self.set_page('ready')
     def start_recording(self):
+        if not self.usb_available():
+            self.controller.message='NO USB INPUT - CONNECT AN AUDIO INTERFACE';return
         was_mixer=self.sample_mixer;self.sample_mixer=False
         if self.main.record_mode=='browser':
             selected=self.main.record_source_index
@@ -75,6 +88,12 @@ class RecordingUI:
         bus=self.controller.bus();bus.set('transport.playing',1-bus.get('transport.playing'))
     def install(self):
         main=self.main;c=self.controller
+        # LIVE can use Internal output, but always requires a real USB input.
+        def choose_output():
+            if not self.usb_available():raise RuntimeError('NO USB INPUT - CONNECT AN AUDIO INTERFACE')
+            main.ui.refresh_audio_outputs()
+            return main.resolve_output(main.ui.audio_output_id)
+        c.choose_output=choose_output
         previous_filter=c.filter_record_actions
         def filter_actions(actions):
             actions=previous_filter(actions)
@@ -89,6 +108,9 @@ class RecordingUI:
                 self.sample_mixer=False
                 if c.mode=='LIVE' and main.controls.current_tab=='SAMPLE':self.set_page('ready')
             if self.initialized:return
+            if not self.usb_available():
+                main.RECORD_SOURCES=[dict(id='usb',label='NO USB INPUT',device='V4_USB_NOT_CONNECTED',channels=2,format='CONNECT A USB AUDIO INTERFACE')]
+                main.record_source_index=0
             self.initialized=True
             original=main.handle_record_action
             def handle(action,value):
@@ -123,12 +145,17 @@ class RecordingUI:
                         if value!=0:self.toggle_mixer()
                         return True
                 if mode=='browser' and action=='START':
-                    if value!=0:main.controls.request_sample_preview()
+                    if value!=0:self.preview_sample()
                     return True
                 if mode=='browser' and action in ('L2','R2'):
                     if value!=0:
                         main.select_record_source(-1 if action=='L2' else 1)
                         if self.router:self.router.sync_input(main)
+                    return True
+                if mode=='ready' and c.mode=='LIVE' and action=='A':
+                    if value!=0:
+                        if c.active():c.bus().set('live.freeze',1-c.bus().get('live.freeze'))
+                        else:c.message='START LIVE WITH Y BEFORE FREEZING'
                     return True
                 if action=='Y' and mode in ('browser','ready'):
                     if value==0:return True
@@ -152,7 +179,10 @@ class RecordingUI:
             if main.record_mode=='browser':
                 pygame.draw.rect(ui.screen,ui.BG,(770,105,225,140))
                 ui.text('SAMPLE',782,120,4,ui.ACCENT)
-                self.draw_source_label(ui,782,190,210,3)
+                ui.text('INPUT',782,175,2,ui.DIM)
+                self.draw_source_label(ui,782,205,210,2)
+                pygame.draw.rect(ui.screen,ui.BG,(750,226,245,5))
+                if c.message:ui.text(fit_label(c.message.upper(),914,2),55,660,2,ui.ACCENT)
             return result
         cls.draw_sample_page=sample
         original_text=cls.text
@@ -174,7 +204,7 @@ class RecordingUI:
                 elif main.record_mode=='ready':
                     if c.mode=='LIVE':
                         action='Y FREEZE' if c.active() and c.bus().get('transport.playing')>=.5 else 'Y RESUME' if c.active() else 'Y START'
-                        items=[('D-PAD MIX',gray),('X SAMPLE',accent),(action,accent),('B STOP/BACK',gray),('L2/R2 INPUT',gray)]
+                        items=[('D-PAD MIX',gray),('X SAMPLE',accent),(action,accent),('A FREEZE',gray),('B STOP/BACK',gray),('L2/R2 INPUT',gray)]
                     else:
                         action='A/START PAUSE' if c.bus().get('transport.playing')>=.5 else 'A/START PLAY'
                         items=[('D-PAD MIX',gray),('X LIVE',accent),('Y RECORD',accent),('SELECT/B BACK',gray),(action,accent)]
@@ -185,7 +215,7 @@ class RecordingUI:
         cls.draw_bar_items=bar
     def ready(self,ui):
         c=self.controller;live=c.mode=='LIVE'
-        ui.text('LIVE' if live else 'SAMPLE',55,120,5,ui.ACCENT)
+        ui.text('LIVE' if live else 'SAMPLE',782,120,4,ui.ACCENT)
         worker=getattr(self.main,'audio_worker',None)
         if live:
             active=c.active() and worker is not None and worker.running
@@ -193,19 +223,22 @@ class RecordingUI:
             if active and c.bus().get('transport.playing')<.5:status='PAUSED'
         else:
             status='NO SAMPLE' if getattr(self.main,'sample',None) is None else 'PLAYING' if c.bus().get('transport.playing')>=.5 else 'PAUSED'
-        ui.text(status,715,135,3)
+        ui.text(status,782,175,2)
         if live:
-            ui.text('INPUT',55,205,2,ui.DIM)
-            self.draw_source_label(ui,55,240,914,4)
-            ui.text(self.main.current_record_source().get('format','48 KHZ / STEREO USB'),55,285,2)
+            ui.text('INPUT / USB AUDIO',55,120,2,ui.DIM)
+            self.draw_source_label(ui,55,165,695,4)
+            ui.text(self.main.current_record_source().get('format','48 KHZ / STEREO USB'),55,220,2)
+            frozen=c.bus().get('live.freeze')>=.5
+            ui.text('FREEZE',55,275,3,ui.WHITE)
+            pygame.draw.rect(ui.screen,ui.ACCENT if frozen else ui.DIM,(205,270,96,32),2,border_radius=7)
+            ui.text('ON' if frozen else 'OFF',241 if frozen else 235,278,2,ui.ACCENT if frozen else ui.WHITE)
             from original_adapter import MIX_CONTROLS
             controls=MIX_CONTROLS;selected_index=c.mix_selection
         else:
-            ui.text('LOADED SAMPLE',55,205,2,ui.DIM)
-            sample=getattr(self.main,'sample',None)
-            label=Path(sample.path).name if sample is not None else 'LOAD OR RECORD A SAMPLE FIRST'
-            ui.text(fit_label(label,914,3),55,240,3,ui.ACCENT)
-            ui.text('SAMPLE PLAYBACK MIXER',55,285,2,ui.DIM)
+            ui.text('INPUT / USB AUDIO',55,120,2,ui.DIM)
+            self.draw_source_label(ui,55,165,695,4)
+            ui.text(self.main.current_record_source().get('format','48 KHZ / STEREO USB'),55,220,2)
+            ui.text('Y: RECORD SAMPLE',55,275,3,ui.WHITE)
             controls=SAMPLE_MIX_CONTROLS;selected_index=self.sample_selection
         for index,(label,key) in enumerate(controls):
             cx=200+index*310;selected=index==selected_index;color=ui.ACCENT if selected else ui.WHITE
@@ -214,9 +247,11 @@ class RecordingUI:
             value=str(round(c.bus().get(key)*100))+'%'
             ui.text(value,cx-len(value)*9,515,3,color)
         if live:
-            ui.text('FREEZE: '+('ON' if c.bus().get('live.freeze')>=.5 else 'OFF'),55,585,2)
+            ui.text('A: FREEZE ON / OFF',55,585,2)
             ui.text('HOLD THE LIVE BUFFER',55,625,2)
         else:
-            ui.text('MIXES APPLY TO SAMPLE PLAYBACK',55,585,2)
-            ui.text('SELECT OR B: SAMPLE BROWSER',55,625,2)
+            ui.text('LOADED SAMPLE',55,570,2,ui.DIM)
+            sample=getattr(self.main,'sample',None)
+            label=Path(sample.path).name if sample is not None else 'LOAD OR RECORD A SAMPLE FIRST'
+            ui.text(fit_label(label,914,2),55,605,2,ui.ACCENT)
         if c.message and 'LIVE ON' not in c.message:ui.text(fit_label(c.message.upper(),914,2),55,660,2,ui.ACCENT)

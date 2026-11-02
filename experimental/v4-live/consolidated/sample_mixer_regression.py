@@ -8,7 +8,7 @@ import numpy as np
 class MixerChecks:
     actions={1:'SELECT',2:'LEFT',3:'DOWN',4:'LEFT',5:'DOWN',6:'LEFT',7:'START',8:'SELECT',
              9:'X',10:'R2',11:'Y',12:'Y',13:'X',14:'SELECT',15:'B',16:'Y',17:'Y',
-             19:'START',20:'START',21:'SELECT',22:'X',23:'X',24:'EXIT'}
+             19:'START',20:'START',21:'SELECT',22:'X',23:'X',24:'X',25:'Y',26:'A',27:'A',28:'X',29:'EXIT'}
     def __init__(self,app):self.app=Path(app)
     def prepare(self):
         if 'work' not in self.app.parts and not self.app.is_relative_to(Path('/tmp')):
@@ -79,6 +79,21 @@ class MixerChecks:
             def stop(self,restart=True):self.playing=False
             def update(self,worker,selected_path):pass
         main.sample_preview=Preview()
+        # Selected Internal output is valid with a connected USB input.
+        internal=next(identifier for identifier,label,pcm in main.ui._audio_outputs if pcm=='default')
+        selected=main.ui.audio_output_id
+        main.ui.audio_output_id=internal
+        assert c.choose_output()=='default'
+        main.ui.audio_output_id=selected
+        from v4_record_ui import RecordingUI
+        ui=RecordingUI(main,c)
+        original_sources=main.RECORD_SOURCES
+        c.message=''
+        ui.start_recording()
+        assert 'NO USB INPUT' in c.message and main.record_mode=='browser'
+        assert main.RECORD_SOURCES is original_sources
+        c.message=''
+        print('PASS USB input with Internal output and missing-input recording guard',flush=True)
     def frame(self,main,state):
         import pygame
         c=main._v4_controller;n=state['frames']
@@ -101,6 +116,10 @@ class MixerChecks:
         if n==21:assert not main.sample_preview.playing
         if n==23:assert c.mode=='LIVE' and not c.active() and main.record_mode=='ready'
         if n==24:assert c.mode=='REC' and main.record_mode=='browser'
+        if n==26:assert c.active() and main.params.get('live.freeze')==0
+        if n==27:assert main.params.get('live.freeze')==1
+        if n==28:assert main.params.get('live.freeze')==0
+        if n==29:assert c.mode=='REC' and not c.active()
     def after_draw(self,main,state):
         import pygame
         n=state['frames']

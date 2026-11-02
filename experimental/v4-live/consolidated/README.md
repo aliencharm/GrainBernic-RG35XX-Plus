@@ -4,6 +4,16 @@
 
 AntevasinBuild, based on the official **ETRNLIAM GrainBrick beta 1.0**, combines the original app/DSP with the tested V4 live-input, routing and UI changes through UI Test 1.13. The proprietary original engine and native libraries remain unchanged. This release consolidates the working build; it does not introduce a new audio algorithm.
 
+## V4.1.4 input, preview and layout update
+
+For installed V4.1.3, close GrainBrick and merge `GrainBrick_V4.1.4_Update.zip` into the existing `ports/` directory. Keep your launcher, settings and media.
+
+SAMPLE and LIVE mixers share mode/status placement on the right, input details on the left and matching knobs/footer styling. SAMPLE shows its recording action and loaded filename; LIVE shows a compact FREEZE ON/OFF switch below the input details. A toggles Freeze during LIVE; Y keeps its start/freeze/resume behavior.
+
+The RG35XX Plus has no built-in microphone. Only detected USB inputs are offered; with none connected, both modes show NO USB INPUT and recording/LIVE start report the missing input before starting capture. Internal output is valid when USB input is connected; choose the wanted output in SETTINGS. Connect the interface before launch.
+
+START previews the selected browser audio file whether already loaded or not, using the same preview player. The SAMPLE browser separator is shortened and its right panel includes INPUT above the selected interface/pair.
+
 ## V4.1.3 SAMPLE and LIVE mixer update
 
 Close GrainBrick and extract `GrainBrick_V4.1.3_Update.zip` into the existing `ports/` directory, merging `grainbrick-v4` with your installed V4.1.2 folder. Keep the existing launcher. Personal samples, projects, recordings and settings are preserved.
@@ -108,7 +118,7 @@ Original licenses, third-party notices and supplied compliance sources are retai
 
 ## Validation
 
-The clean archive passes its manifest, layout, factory-content and license checks. All 44 host tests pass. The pruned NumPy runtime, original native DSP chain and fresh application startup/control flow pass ARM-emulated checks, including a separate no-USB launch. Hardware/audio-process boundaries are mocked in the UI tests. The V4.1 baseline was confirmed on device. The new mixer needs device confirmation; see `VALIDATION-4.1.3.md` in the repository.
+The clean archive passes its manifest, layout, factory-content and license checks. All 46 host tests pass. The pruned NumPy runtime, original native DSP chain and fresh application startup/control flow pass ARM-emulated checks, including a separate no-USB launch. Hardware/audio-process boundaries are mocked in the UI tests. The V4.1 baseline was confirmed on device. The input/layout update needs device confirmation; see `VALIDATION-4.1.4.md` in the repository.
 
 ## Known limits and diagnostics
 

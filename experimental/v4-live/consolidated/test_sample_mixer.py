@@ -50,6 +50,26 @@ class SampleMixerTests(unittest.TestCase):
                 result=StageMix(Effect(),key).process(np.ones((512,2),np.float32),bus)
                 np.testing.assert_allclose(result,expected)
                 self.assertEqual(bus.get(key),1.)
+    def test_preview_dispatches_loaded_and_unloaded_entries_to_same_player(self):
+        calls=[]
+        main=types.SimpleNamespace(controls=types.SimpleNamespace(sample_index=0),
+            ui=types.SimpleNamespace(audio_output_id='internal'),audio_worker=object(),
+            sample=types.SimpleNamespace(path='loaded.wav'),
+            sample_preview=types.SimpleNamespace(toggle=lambda *args:calls.append(args)),
+            resolve_output=lambda value:'default')
+        main.sample_browser=types.SimpleNamespace(get=lambda index:types.SimpleNamespace(path=('loaded.wav','other.wav')[index]))
+        ui=RecordingUI(main,types.SimpleNamespace(message=''))
+        ui.preview_sample();main.controls.sample_index=1;ui.preview_sample()
+        self.assertEqual([args[0] for args in calls],['loaded.wav','other.wav'])
+        self.assertTrue(all(args[1] is main.audio_worker and args[2]=='default' for args in calls))
+    def test_missing_usb_blocks_record_before_touching_original_recorder(self):
+        c=types.SimpleNamespace(message='')
+        ui=RecordingUI(types.SimpleNamespace(),c)
+        ui.start_recording()
+        self.assertIn('NO USB INPUT',c.message)
+        self.assertFalse(ui.usb_available())
+        ui.router=types.SimpleNamespace(inputs=[dict(alias='usb')])
+        self.assertTrue(ui.usb_available())
     def test_source_labels_fit_reserved_header_width(self):
         label='LOADED: '+('a very long sample filename/'*5)+'audio.wav'
         fitted=fit_label(label,695,2)

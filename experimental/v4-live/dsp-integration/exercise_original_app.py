@@ -18,12 +18,12 @@ integrated='--integrated' in sys.argv
 final_entry='--final-entry' in sys.argv
 controller=None
 project_checks=None
-if '--project-playback' in sys.argv or '--sample-mixer' in sys.argv:
-    checks_file='sample_mixer_regression.py' if '--sample-mixer' in sys.argv else 'project_regression.py'
+if '--project-playback' in sys.argv or '--sample-mixer' in sys.argv or '--input-unavailable' in sys.argv:
+    checks_file='input_unavailable_regression.py' if '--input-unavailable' in sys.argv else 'sample_mixer_regression.py' if '--sample-mixer' in sys.argv else 'project_regression.py'
     path=Path(__file__).resolve().parents[1]/'consolidated'/checks_file
     spec=importlib.util.spec_from_file_location('v4_project_regression',path)
     module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
-    checks_cls=module.MixerChecks if '--sample-mixer' in sys.argv else module.ProjectChecks
+    checks_cls=module.InputChecks if '--input-unavailable' in sys.argv else module.MixerChecks if '--sample-mixer' in sys.argv else module.ProjectChecks
     project_checks=checks_cls(app);project_checks.prepare()
 state={'installed':False,'frames':0,'worker_constructed':0,'worker_started':0,'worker_stopped':0,'record_overlay_calls':0,'record_start_delegated':0}
 report={}
@@ -153,8 +153,8 @@ def install():
                         state['record_stop_delegated']=state.get('record_stop_delegated',0)+1
                         main.record_mode='browser'
                     main.stop_input_recording_to_editor=fake_stop_record
-                    def preview_request(self):state['preview_requested']=state.get('preview_requested',0)+1
-                    type(main.controls).request_sample_preview=preview_request
+                    def preview_request(self,*args):state['preview_requested']=state.get('preview_requested',0)+1
+                    type(main.sample_preview).toggle=preview_request
         if project_checks:project_checks.frame(main,state)
         if integrated:
             if '--channel-routing' in sys.argv and state['frames']==14:
@@ -189,6 +189,10 @@ try:
             import channel_routes
             configure=channel_routes.configure
             channel_routes.configure=lambda app,config:configure(app,config,app.parent/'asound')
+        if '--input-unavailable' in sys.argv:
+            v4_install.usb_devices=lambda asound:None
+            import channel_routes
+            channel_routes.configure=lambda app,config:None
         if '--system-mapping' in sys.argv:
             import v4_buttons
             original_prepare=v4_buttons.prepare_buttons
