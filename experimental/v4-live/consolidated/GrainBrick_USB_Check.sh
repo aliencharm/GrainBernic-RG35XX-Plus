@@ -1,8 +1,21 @@
 #!/bin/sh
-# Read-only USB/ALSA diagnostic. Writes only the report beside this launcher.
+# USB/ALSA diagnostic. Writes only its report inside the app folder.
 TASK_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1
-exec >"$TASK_ROOT/GrainBrick_USB_Report.txt" 2>&1
-printf 'GrainBrick USB / ALSA diagnostic\n'
+if [ -d "$TASK_ROOT/grainbrick-v4" ]; then
+    TASK_APP="$TASK_ROOT/grainbrick-v4"
+elif [ -f "$TASK_ROOT/v4_entry.py" ]; then
+    TASK_APP="$TASK_ROOT"
+else
+    printf 'Cannot find grainbrick-v4 beside this script. Put the script in ports.\n' >&2
+    exit 1
+fi
+TASK_REPORT="$TASK_APP/GrainBrick_USB_Report.txt"
+# The launcher may run as root; make only this diagnostic report share-readable/writable.
+umask 000
+exec >"$TASK_REPORT" 2>&1
+chmod 0666 "$TASK_REPORT" || exit 1
+printf 'GrainBrick USB / ALSA diagnostic v2\n'
+printf 'Report path: %s\n' "$TASK_REPORT"
 date
 uname -a
 for item in /proc/asound/cards /proc/asound/devices /proc/asound/pcm; do
