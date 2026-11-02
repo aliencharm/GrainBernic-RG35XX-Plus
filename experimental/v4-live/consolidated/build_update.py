@@ -32,7 +32,7 @@ def build_update(base,target,output):
                 archive=overlay if name in changed else old
                 if hashlib.sha256(archive.read(name)).hexdigest()!=digest:
                     raise ValueError('Overlay integrity mismatch: '+name)
-    print('Requires installed UI Test',prior['version'],'->',current['version'])
+    print('Requires installed GrainBrick',prior['version'],'->',current['version'])
     print(output,Path(output).stat().st_size,'bytes;',len(changed),'changed files')
     print('\n'.join(changed))
 

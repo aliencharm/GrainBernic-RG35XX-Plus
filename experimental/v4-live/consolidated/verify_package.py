@@ -14,7 +14,7 @@ def verify(path):
         assert archive.testzip() is None,'ZIP integrity failure'
         assert {n.split('/')[0] for n in names}=={'GrainBrick V4.1.sh','grainbrick-v4'},'Unexpected top-level files'
         manifest=json.loads(archive.read('grainbrick-v4/RELEASE.json'))
-        assert manifest['version']=='4.1' and manifest['kind']=='standalone'
+        assert manifest['version'].split('.')[:2]==['4','1'] and manifest['kind']=='standalone'
         assert files==set(manifest['sha256'])|{'grainbrick-v4/RELEASE.json'},'Untracked or missing files'
         for name,digest in manifest['sha256'].items():
             assert not PurePosixPath(name).is_absolute() and '..' not in PurePosixPath(name).parts

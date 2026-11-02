@@ -3,6 +3,7 @@ import os
 os.environ.update(SDL_VIDEODRIVER='dummy',SDL_AUDIODRIVER='dummy',OPENBLAS_NUM_THREADS='1',PYGAME_HIDE_SUPPORT_PROMPT='1')
 from pathlib import Path
 import importlib
+import importlib.util
 import json
 import signal
 import sys
@@ -16,6 +17,12 @@ sys.path.insert(0,str(app))
 integrated='--integrated' in sys.argv
 final_entry='--final-entry' in sys.argv
 controller=None
+project_checks=None
+if '--project-playback' in sys.argv:
+    path=Path(__file__).resolve().parents[1]/'consolidated/project_regression.py'
+    spec=importlib.util.spec_from_file_location('v4_project_regression',path)
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    project_checks=module.ProjectChecks(app);project_checks.prepare()
 state={'installed':False,'frames':0,'worker_constructed':0,'worker_started':0,'worker_stopped':0,'record_overlay_calls':0,'record_start_delegated':0}
 report={}
 
@@ -33,7 +40,9 @@ def install():
         self._mock_waveform=np.zeros(512,dtype=np.float32)
         self._mock_spectrum=np.zeros(128,dtype=np.float32)
         self._mock_orbix=np.zeros(256,dtype=np.float32)
-    def start(self):state['worker_started']+=1;self._mock_running=True
+    def start(self):
+        state['worker_started']+=1;self._mock_running=True
+        if project_checks:state.setdefault('start_modes',[]).append(self.granular.parameters.get('live.enabled'))
     def stop(self):state['worker_stopped']+=1;self._mock_running=False
     def request(self,pcm):self._mock_device=pcm
     cls.__init__=initialize;cls.start=start;cls.stop=stop;cls.request_audio_device=request
@@ -60,6 +69,7 @@ def install():
                 actions={1:'X',2:'R2',3:'A',4:'TAB_NEXT',5:'TAB_NEXT',6:'TAB_PREV',7:'TAB_PREV',8:'Y',9:'RIGHT',10:'DOWN',11:'LEFT',12:'DOWN',13:'LEFT',14:'UP',15:'RIGHT',16:'UP',17:'RIGHT',18:'L2',19:'A',20:'B',21:'X',22:'R2',23:'A',24:'B',25:'EXIT'}
             if '--record-ui' in sys.argv:
                 actions={1:'X',2:'R2',3:'Y',4:'TAB_NEXT',5:'TAB_NEXT',6:'TAB_PREV',7:'TAB_PREV',8:'Y',9:'RIGHT',10:'DOWN',11:'LEFT',12:'DOWN',13:'LEFT',14:'UP',15:'RIGHT',16:'UP',17:'RIGHT',18:'L2',19:'Y',20:'B',21:'B',22:'X',23:'R2',24:'Y',25:'Y',26:'START',27:'EXIT'}
+            if project_checks:actions={2:'START',4:'START',6:'TAB_NEXT',8:'START',10:'EXIT'}
             action=actions.get(state['frames'])
             return [(action,None)] if action else []
         return [('EXIT',None) for ev in pg.event.get() if ev.type==pg.QUIT]
@@ -99,7 +109,9 @@ def install():
         state['frames']+=1
         main=sys.modules['main']
         if final_entry:controller=main._v4_controller
-        if state['frames']==1:
+        if state['frames']==1 and project_checks:
+            project_checks.first(main,controller,state)
+        elif state['frames']==1:
             report['original_main_functions']=[k for k,v in vars(main).items() if callable(v) and getattr(v,'__module__',None)=='main']
             report['record_sources']=main.RECORD_SOURCES
             report['record_globals']={k:v if isinstance(v,(str,int,float,bool,type(None))) else type(v).__name__ for k,v in vars(main).items() if 'record' in k}
@@ -141,6 +153,7 @@ def install():
                     main.stop_input_recording_to_editor=fake_stop_record
                     def preview_request(self):state['preview_requested']=state.get('preview_requested',0)+1
                     type(main.controls).request_sample_preview=preview_request
+        if project_checks:project_checks.frame(main,state)
         if integrated:
             if '--channel-routing' in sys.argv and state['frames']==14:
                 main.ui.audio_output_id=main.ui._audio_outputs[-1][0]
@@ -190,11 +203,13 @@ finally:
     (app/'original-main-report.json').write_text(json.dumps(report,indent=2)+'\n')
 print('ORIGINAL MAIN TEST RESULT',json.dumps(state),flush=True)
 assert state['frames']>=3 and state['worker_constructed']>0 and state['worker_stopped']>0
-if '--record-ui' not in sys.argv:assert state['record_overlay_calls']>0,'Original record page hook was not dispatched'
+if project_checks:
+    project_checks.finish(sys.modules['main'],state)
+elif '--record-ui' not in sys.argv:assert state['record_overlay_calls']>0,'Original record page hook was not dispatched'
 else:
     assert state.get('record_stop_delegated')==1,state
     assert state.get('preview_requested')==1,state
-if integrated:
+if integrated and not project_checks:
     frames=report['frames']
     if '--channel-routing' in sys.argv:
         assert any(f['input_index']!=frames[0]['input_index'] and f['active'] for f in frames),frames

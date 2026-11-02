@@ -13,11 +13,13 @@ parser.add_argument('--original',type=Path,required=True,help='Extracted origina
 source=parser.parse_args().original.resolve()
 assert hashlib.sha256((source/MAIN).read_bytes()).hexdigest()==EXPECTED_MAIN,'Unexpected original native application'
 baseline=json.loads((root/'audio-baseline.json').read_text())
-files={f'GrainBrick V{VERSION}.sh':root/'GrainBrick V4.sh',
+launcher_version='.'.join(VERSION.split('.')[:2])
+files={f'GrainBrick V{launcher_version}.sh':root/'GrainBrick V4.sh',
        'grainbrick-v4/README_V4.md':root/'README.md',
        'grainbrick-v4/CREDITS_V4.md':root/'CREDITS.md',
        'grainbrick-v4/config.example.json':root/'config.example.json',
        'grainbrick-v4/v4_record_ui.py':root/'v4_record_ui.py',
+       'grainbrick-v4/v4_projects.py':root/'v4_projects.py',
        'grainbrick-v4/v4_waveform.py':root/'v4_waveform.py',
        'grainbrick-v4/v4_themes.py':root/'v4_themes.py',
        'grainbrick-v4/audio_inventory.py':root.parent/'routing/audio_inventory.py',

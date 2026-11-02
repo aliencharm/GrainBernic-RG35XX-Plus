@@ -2,6 +2,10 @@
 
 [**Download GrainBrick V4.1 Standalone**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.1_Standalone.zip)
 
+[**V4.1.1 project/playback fix — small update for installed V4.1**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.1.1_Update.zip)
+
+This update prevents saved LIVE session flags from hijacking project/file playback, restores sample-browser selection for START preview, and recovers unambiguous legacy media paths. Projects, recordings and settings are retained. See [update notes](experimental/v4-live/consolidated/README.md#v411-projectplayback-update) and [regression evidence](experimental/v4-live/consolidated/VALIDATION-4.1.1.md).
+
 The complete AntevasinBuild based on official ETRNLIAM GrainBrick beta 1.0, consolidating the tested V4 changes through UI Test 1.13. Includes original native DSP, USB LIVE input, three mix controls, freeze, original REC/edit/save, stereo-pair routing, continuous waveform drawing and six themes.
 
 Back up any existing `grainbrick-v4` folder before a clean installation. Extract into `/userdata/roms/ports/` and launch **GrainBrick V4.1**. The ZIP contains one launcher plus one app folder; no V3, previous V4, patch chain, downloads or pip installation are required.
@@ -10,7 +14,7 @@ Target: **RG35XX Plus / KNULLI Scarab 20260511**, using system Python 3.12, Pyga
 
 [Installation, controls and known limits](experimental/v4-live/consolidated/README.md) · [Release validation](experimental/v4-live/consolidated/VALIDATION-4.1.md) · [Credits](experimental/v4-live/consolidated/CREDITS.md)
 
-The AUDIO4c saved-REC startup click remains unresolved; Tascam was reported free of that click. Audio behavior is retained from the tested build. A fresh handheld installation still needs confirmation; host/ARM emulation does not establish USB hardware performance.
+The AUDIO4c saved-REC startup click remains unresolved; Tascam was reported free of that click. Audio behavior is retained from the tested build. The clean V4.1 installation was user-confirmed working. The 4.1.1 fix is verified on the host and under ARM emulation and still needs device confirmation; emulation does not establish USB hardware performance.
 
 Historical test/update ZIPs remain available for reference; they are not installation dependencies.
 

@@ -4,6 +4,16 @@
 
 AntevasinBuild, based on the official **ETRNLIAM GrainBrick beta 1.0**, combines the original app/DSP with the tested V4 live-input, routing and UI changes through UI Test 1.13. The proprietary original engine and native libraries remain unchanged. This release consolidates the working build; it does not introduce a new audio algorithm.
 
+## V4.1.1 project/playback update
+
+For an existing V4.1 installation, close the app and extract `GrainBrick_V4.1.1_Update.zip` into the same `ports/` directory, accepting replacement of the included application files. Keep your existing `grainbrick-v4` folder and **GrainBrick V4.1** launcher. This small update does not contain or overwrite projects, samples, recordings, settings or theme preferences.
+
+Project loading now returns to file playback and the sample browser. Transient `live.enabled` / `live.freeze` flags from older saved projects and last-session state are ignored, and new saves omit those flags. Loading the same file after LIVE restarts the original file worker as needed. The loaded audio file is selected in the browser so START previews it; the original preview and REC edit/save implementations are retained.
+
+Legacy references to the duplicate factory demo and moved media directories are resolved to an unambiguous matching path in the current installation. Existing project JSON files are not automatically rewritten. Actually missing or ambiguous files retain the original SAMPLE NOT FOUND error. A saved project references an audio file; it does not embed a temporary LIVE buffer.
+
+The update does not change DSP algorithms, audio buffers, themes or saved-recording samples. V4.1 remains the complete standalone baseline; V4.1.1 is an overlay for it.
+
 ## Install fresh
 
 Requires **Anbernic RG35XX Plus running KNULLI Scarab 20260511**, with its system Python 3.12, Pygame and ALSA tools. Bundled NumPy supplies the additional runtime dependency. No pip installation or earlier app folders are needed. Other firmware/hardware combinations are not established by these checks.
