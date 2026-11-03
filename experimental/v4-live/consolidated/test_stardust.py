@@ -101,9 +101,37 @@ class StardustTests(unittest.TestCase):
             signal=out[48000:144000,0]
             spectrum=np.abs(np.fft.rfft(signal*np.hanning(len(signal))))**2
             frequencies=np.fft.rfftfreq(len(signal),1/48000)
-            energies[shift]={hz:float(np.sum(spectrum[(frequencies>hz-8)&(frequencies<hz+8)])) for hz in (110,440)}
+            energies[shift]={hz:float(np.sum(spectrum[(frequencies>hz-8)&(frequencies<hz+8)])) for hz in (110,220,440,880)}
         self.assertGreater(energies[12][440],energies[0][440]*10)
         self.assertGreater(energies[-12][110],energies[0][110]*10)
+        self.assertGreater(energies[12][440],energies[12][220]*2)
+        self.assertGreater(energies[-12][110],energies[-12][220]*2)
+        self.assertGreater(energies[12][880],energies[12][220]*.02)
+    def test_stereo_cloud_remains_audible_in_mono_and_modulation_is_present(self):
+        spectra={}
+        for depth,frequency in ((0,.5),(1,.05),(1,5)):
+            e=StardustDSP(48000,self.library);self.addCleanup(e.close)
+            p=Params(**{'stardust.input':0,'stardust.predelay':0,'stardust.return':1,'stardust.pitch':12,'stardust.depth':depth,'stardust.frequency':frequency,'stardust.size':1,'stardust.decay':1})
+            signal=np.zeros((48000*8,2),np.float32)
+            signal[:48000*3]=(.2*np.sin(np.arange(48000*3)*2*np.pi*220/48000))[:,None]
+            out=np.empty_like(signal)
+            for start in range(0,len(signal),512):
+                block=signal[start:start+512];out[start:start+len(block)]=e.process(block,block.copy(),p)
+            tail=out[48000*3:48000*7]
+            if depth==0:
+                self.assertLess(abs(float(np.corrcoef(tail.T)[0,1])),.6)
+                stereo=float(np.mean(tail*tail));mono=float(np.mean(np.mean(tail,axis=1)**2))
+                self.assertGreater(mono,stereo*.2)
+                channel_energy=np.mean(tail*tail,axis=0)
+                self.assertGreater(float(min(channel_energy)/max(channel_energy)),.25)
+            spec=np.sum(np.abs(np.fft.rfft(out[48000:144000]*np.hanning(96000)[:,None],axis=0))**2,axis=1)
+            frequencies=np.fft.rfftfreq(96000,1/48000)
+            region=(frequencies>300)&(frequencies<600)
+            sides=region&(abs(frequencies-440)>12)
+            spectra[depth,frequency]=float(np.sum(spec[sides])/np.sum(spec[region]))
+        self.assertGreater(spectra[1,5],spectra[1,.05]+.15)
+        self.assertGreater(spectra[1,5],spectra[0,.5]+.15)
+
     def test_choice_keeps_original_path_and_only_processes_selected_engine(self):
         class FX:sample_rate=48000
         fx=FX();choice=ShimmerChoice(fx);p=Params(**{'shimmer.mix':.8,'reverb.mix':.7})

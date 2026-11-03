@@ -11,7 +11,7 @@ typedef struct {
  float *fdn,*pitch,*pre,*dry;
  float damp[8],damp2[8],delay[8],gain[8],norm[8],hp[2],pitch_lp[2][2];
  float diffuse[2][4][1024];int dpi[2][4],dlen[2][4];
- float phase,modphase,ratio,bright,aa,send,ret,input,pretime,depth;
+ float phase[2],modphase,ratio,bright,aa,send,ret,input,pretime,depth;
  float sine[LUT+1];
 } Stardust;
 static const float times[8]={.0297f,.0371f,.0411f,.0437f,.0533f,.0617f,.0713f,.0797f};
@@ -34,7 +34,7 @@ static float read2(const float*b,int cap,int wi,float delay,int c){
 void* stardust_create(int rate){
  if(rate<8000||rate>96000)return NULL;
  Stardust*s=calloc(1,sizeof(*s));if(!s)return NULL;
- s->sr=rate;s->fdn_cap=(int)(rate*.19f)+32;s->pitch_cap=(int)(rate*.24f)+128;s->pre_cap=(int)(rate*1.01f)+8;
+ s->sr=rate;s->fdn_cap=(int)(rate*.42f)+32;s->pitch_cap=(int)(rate*.24f)+128;s->pre_cap=(int)(rate*1.01f)+8;
  s->fdn=calloc(8*s->fdn_cap,sizeof(float));s->pitch=calloc(2*s->pitch_cap,sizeof(float));s->pre=calloc(2*s->pre_cap,sizeof(float));s->dry=calloc(2*s->pre_cap,sizeof(float));
  if(!s->fdn||!s->pitch||!s->pre||!s->dry){free(s->fdn);free(s->pitch);free(s->pre);free(s->dry);free(s);return NULL;}
  for(int c=0;c<2;c++)for(int j=0;j<4;j++){int base[4]={149,211,263,293};s->dlen[c][j]=(base[j]+c*17)*rate/48000;}
@@ -46,29 +46,29 @@ void stardust_clear(void*handle){
  memset(s->fdn,0,8*s->fdn_cap*sizeof(float));memset(s->pitch,0,2*s->pitch_cap*sizeof(float));memset(s->pre,0,2*s->pre_cap*sizeof(float));memset(s->dry,0,2*s->pre_cap*sizeof(float));
  memset(s->diffuse,0,sizeof(s->diffuse));memset(s->dpi,0,sizeof(s->dpi));
  memset(s->damp,0,sizeof(s->damp));memset(s->hp,0,sizeof(s->hp));memset(s->damp2,0,sizeof(s->damp2));memset(s->pitch_lp,0,sizeof(s->pitch_lp));
- s->wi=s->pwi=s->prewi=0;s->phase=s->modphase=0;s->ready=0;
+ s->wi=s->pwi=s->prewi=0;s->phase[0]=s->phase[1]=s->modphase=0;s->ready=0;
 }
 void stardust_destroy(void*handle){Stardust*s=handle;if(s){free(s->fdn);free(s->pitch);free(s->pre);free(s->dry);free(s);}}
 /* p: predelay ms, size, decay, pitch st, brightness, freq Hz, depth, input, send, return */
 int stardust_process(void*handle,const float*feed,float*audio,int frames,const float*p){
  Stardust*s=handle;if(!s||!feed||!audio||!p||frames<0)return -1;
  for(int i=0;i<10;i++)if(!isfinite(p[i]))return -2;
- /* Wider room/decay ranges; a smaller lossy pitch projection preserves the late tail. */
- float room=.2f+2.1f*clamp(p[1],0,1),rt=.25f+39.75f*powf(clamp(p[2],0,1),1.4f);
+ /* Long diffuse bed plus a prominent stereo pitch return; no feedback gain boost. */
+ float room=.2f+4.6f*clamp(p[1],0,1),rt=.25f+59.75f*powf(clamp(p[2],0,1),1.4f);
  float target_delay[8],target_gain[8],target_norm[8];
  for(int j=0;j<8;j++){target_delay[j]=times[j]*s->sr*room;target_gain[j]=powf(.001f,times[j]*room/rt);target_norm[j]=sqrtf(fmaxf(0,1-target_gain[j]*target_gain[j]));}
  float ratio=powf(2.f,clamp(p[3],-24,24)/12.f);
  float fc=120.f*powf(150.f,clamp(p[4],0,1));fc=fminf(fc,.43f*s->sr);
  float bright=1.f-expf(-2*PI*fc/s->sr),alpha=1.f-expf(-1.f/(.02f*s->sr));
  float aa=1.f-expf(-2*PI*fminf(fc,.4f*s->sr/fmaxf(1,ratio))/s->sr);
- float freq=clamp(p[5],.05f,5.f),depth=clamp(p[6],0,1)*.003f*s->sr;
+ float freq=clamp(p[5],.05f,5.f),depth=clamp(p[6],0,1)*.006f*s->sr;
  float predelay=clamp(p[0],-1000,1000)*.001f*s->sr;
  float input=clamp(p[7],0,1),send=clamp(p[8],0,1),ret=clamp(p[9],0,1);
  if(!s->ready){
   for(int j=0;j<8;j++){s->delay[j]=target_delay[j];s->gain[j]=target_gain[j];s->norm[j]=target_norm[j];}
   s->ratio=ratio;s->bright=bright;s->aa=aa;s->pretime=predelay;s->input=input;s->send=send;s->ret=ret;s->depth=depth;s->ready=1;
  }
- float window=.12f*s->sr,min_delay=64.f;
+ float window=.12f*s->sr,min_delay=.015f*s->sr;
  for(int n=0;n<frames;n++){
   s->ratio+=alpha*(ratio-s->ratio);s->bright+=alpha*(bright-s->bright);s->aa+=alpha*(aa-s->aa);
   s->pretime+=alpha*(predelay-s->pretime);s->depth+=alpha*(depth-s->depth);
@@ -84,7 +84,7 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
   float z[8],sum=0,wet[2]={0,0};
   for(int j=0;j<8;j++){
    s->delay[j]+=alpha*(target_delay[j]-s->delay[j]);s->gain[j]+=alpha*(target_gain[j]-s->gain[j]);s->norm[j]+=alpha*(target_norm[j]-s->norm[j]);
-   float mod=sine(s,s->modphase+j*.137f)*s->depth;
+   float mod=sine(s,s->modphase+j*.137f)*fminf(s->depth,s->delay[j]*.35f);
    float v=read1(s->fdn+j*s->fdn_cap,s->fdn_cap,s->wi,s->delay[j]+mod);
    s->damp[j]=clean(s->damp[j]+s->bright*(v-s->damp[j]));s->damp2[j]=clean(s->damp2[j]+s->bright*(s->damp[j]-s->damp2[j]));z[j]=s->damp2[j];sum+=z[j];
    wet[0]+=z[j]*sl[j]*.35355339f;wet[1]+=z[j]*srn[j]*.35355339f;
@@ -94,27 +94,38 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
    s->pitch_lp[c][1]=clean(s->pitch_lp[c][1]+s->aa*(s->pitch_lp[c][0]-s->pitch_lp[c][1]));
    s->pitch[2*s->pwi+c]=s->pitch_lp[c][1];
   }
-  float phase_b=s->phase+.5f;if(phase_b>=1)phase_b-=1;
-  float weight=.5f-.5f*sine(s,s->phase+.25f),pitched[2];
+  float pitched[2];
   for(int c=0;c<2;c++){
-   float a=read2(s->pitch,s->pitch_cap,s->pwi,min_delay+s->phase*window,c);
-   float b=read2(s->pitch,s->pitch_cap,s->pwi,min_delay+phase_b*window,c);
-   float v=a*weight+b*(1-weight);s->hp[c]=clean(s->hp[c]+.004f*(v-s->hp[c]));pitched[c]=v-s->hp[c];
+   /* Independent read-head phases decorrelate the octave cloud in stereo. */
+   float phase=s->phase[c];
+   float phase_b=phase+.5f;if(phase_b>=1)phase_b-=1;
+   float weight=.5f-.5f*sine(s,phase+.25f);
+   float movement=2*s->depth*sine(s,s->modphase+c*.31f);
+   float a=read2(s->pitch,s->pitch_cap,s->pwi,min_delay+phase*window+movement,c);
+   float b=read2(s->pitch,s->pitch_cap,s->pwi,min_delay+phase_b*window+movement,c);
+   float v=a*weight+b*(1-weight);s->hp[c]=clean(s->hp[c]+.0015f*(v-s->hp[c]));pitched[c]=v-s->hp[c];
   }
   for(int j=0;j<8;j++){
    float base=z[j]-.25f*sum;
    float shifted=(pitched[0]*sl[j]+pitched[1]*srn[j])*.35355339f;
    float injected=(in[0]*sl[j]+in[1]*srn[j])*.35355339f*s->norm[j];
    float projection=(wet[0]*sl[j]+wet[1]*srn[j])*.35355339f;
-   float v=injected+s->gain[j]*(base+.16f*(shifted-projection));
+   float v=injected+s->gain[j]*(base+.32f*(shifted-projection));
    s->fdn[j*s->fdn_cap+s->wi]=clean(v);
   }
+  float shift=clamp(fabsf(s->ratio-1)*8,0,1);
   for(int c=0;c<2;c++){
    float dry=read2(s->dry,s->pre_cap,s->prewi,fmaxf(0,-s->pretime),c);
-   float v=dry*s->input+wet[c]*s->ret;
+   /* The audible return is chiefly pitched, independent of the loop's loss budget.
+      Near zero transposition, retain the unshifted output without doubling it. */
+   float cloud=wet[c]*(1-.65f*shift)+pitched[c]*(.93675f*shift);
+   float v=dry*s->input+cloud*s->ret;
    audio[2*n+c]=isfinite(v)?clamp(v,-4.f,4.f):0;
   }
-  s->phase+=(1-s->ratio)/window;s->phase-=floorf(s->phase);
+  for(int c=0;c<2;c++){
+   float ratio_c=s->ratio*(1+(c? .0015f:-.0015f)*shift);
+   s->phase[c]+=(1-ratio_c)/window;s->phase[c]-=floorf(s->phase[c]);
+  }
   s->modphase+=freq/s->sr;if(s->modphase>=1)s->modphase-=1;
   if(++s->wi==s->fdn_cap)s->wi=0;
   if(++s->pwi==s->pitch_cap)s->pwi=0;

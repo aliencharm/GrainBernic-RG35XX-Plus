@@ -1,24 +1,24 @@
 # GrainBrick V4.2 — RG35XX Plus
 
-A complete standalone AntevasinBuild based on official **ETRNLIAM GrainBrick beta 1.0**. This V4.2 standalone consolidates the working V4.1.10 controls, SAMPLE/LIVE mixers, project fixes, themes and frozen-buffer saving. The current update revision is **4.2.4**; it adds the optional Stardust shimmer and retains the V4.2 controls and dry-playback fixes. No earlier installation or patch chain is required.
+A complete standalone AntevasinBuild based on official **ETRNLIAM GrainBrick beta 1.0**. This V4.2 standalone consolidates the working V4.1.10 controls, SAMPLE/LIVE mixers, project fixes, themes and frozen-buffer saving. The current update revision is **4.2.5**; it adds the optional Stardust shimmer and retains the V4.2 controls and dry-playback fixes. No earlier installation or patch chain is required.
 
 Target: **Anbernic RG35XX Plus / KNULLI Scarab 20260511**, with system Python 3.12, Pygame and ALSA tools. The required NumPy runtime is bundled.
 
-## V4.2.4 Stardust preview
+## V4.2.5 Stardust preview
 
-This is the second device-test build of Stardust, an independent native ARM shimmer. Close GrainBrick and merge `GrainBrick_V4.2.4_Stardust_Preview_Update.zip` into an installed V4.2 / V4.2.1 / V4.2.2 / V4.2.3 folder. Keep the V4.2 launcher, personal media and settings. No desktop VST is included or hosted.
+This is the third device-test build of Stardust, an independent native ARM shimmer. Close GrainBrick and merge `GrainBrick_V4.2.5_Stardust_Preview_Update.zip` into an installed V4.2 / V4.2.1 / V4.2.2 / V4.2.3 / V4.2.4 folder. Keep the V4.2 launcher, personal media and settings. No desktop VST is included or hosted.
 
 In FX, open **SHIMMER**. **TYPE** is in the upper header, with its hint below. Move up from the first control row to select TYPE, then use A/B for Original/Stardust. **MENU** switches the type directly while on this category. **L2 selects the previous effect; R2 selects the next**, wrapping at either end. X no longer advances FX. Y retains Fine/Coarse adjustment. L2/R2 keep their existing input-selection function in SAMPLE/LIVE. The selected type and both sets of parameters are saved with the project. Older projects default to Original.
 
-Compared with V4.2.3, Size spans a wider room range, Decay has a longer and more responsive curve, Brightness reaches darker tones and Depth has twice the available delay movement. The pitch-feedback blend loses less energy, giving a longer late tail without adding Return gain. Parameter percentages and button steps are retained; identical percentages sound different from the first preview. This is independent tuning, not a claim to match Luminance.
+Compared with V4.2.4, the audible tail is now predominantly pitch-shifted, while the eight-line network sustains a diffuse bed and recirculates shifted feedback. Independent stereo read heads with slight detuning spread the tail; Depth/Frequency move both the network delays and the pitch read heads. Size spans a larger space and Decay sustains longer. No master/Return gain boost or new Pitch Feedback control is added. Existing percentages produce a different sound; button steps and control ranges are retained. This is independent tuning, not a claim to match Luminance.
 
 Original retains the native GrainBrick shimmer and its controls. Stardust provides:
 
 - **Pre Delay:** -1000 to +1000 ms. Positive delays the send to Stardust; negative delays its dry/base path.
 - **Size / Decay:** network size and relative tail length.
-- **Pitch:** -12 to +12 semitones, inside the recirculating shimmer path.
+- **Pitch:** -12 to +12 semitones, in the wet return and the recirculating shimmer path.
 - **Brightness:** damping of the circulating tail.
-- **Frequency / Depth:** delay modulation rate (0.05–5 Hz) and amount.
+- **Frequency / Depth:** modulation rate (0.05–5 Hz) and amount for both network delays and pitch read heads. At Depth 0%, Frequency has no effect.
 - **Input / Send / Return:** base-path level, feed to Stardust and new wet-tail level. Input scales the existing FX output in this mode; Send feeds Stardust independently from the FX input.
 
 The existing REVERB category, native engine and parameters remain unchanged. Stardust adds its own feedback-delay network and pitch-shift loop in the shimmer slot. Only the selected shimmer algorithm processes audio; switching resets shimmer history and uses a brief transition fade. Original projects retain their original default path.
