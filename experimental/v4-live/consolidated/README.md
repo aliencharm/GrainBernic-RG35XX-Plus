@@ -4,6 +4,16 @@
 
 AntevasinBuild, based on the official **ETRNLIAM GrainBrick beta 1.0**, combines the original app/DSP with the tested V4 live-input, routing and UI changes through UI Test 1.13. The proprietary original engine and native libraries remain unchanged. This release consolidates the working build; it does not introduce a new audio algorithm.
 
+## V4.1.8 save the full frozen LIVE sample
+
+Close the app and merge `GrainBrick_V4.1.8_Update.zip` into installed V4.1.7, retaining the launcher, media and preferences.
+
+Start LIVE, freeze with A or Y, then press SELECT to save the entire held input buffer. SELECT SAVE appears in the footer and SELECT: SAVE SAMPLE below Freeze. Saving keeps LIVE running and frozen. The saved stereo 48 kHz / 16-bit WAV contains the full 16-second buffer in chronological order, regardless of grain size, position or roam range. Freezing before the buffer fills retains the unused silent part. This saves the held input audio before granular/FX/tape processing.
+
+Files use unique `LIVE_FREEZE_YYYYMMDD_HHMMSS.wav` names in the original sample recordings folder (`samples/recordings/`), with a numeric suffix for repeat saves in the same second. Return to SAMPLE and enter recordings to load one. The browser refreshes after saving. An empty or not-yet-acknowledged frozen buffer reports a message instead of writing a misleading file. Existing recordings are never overwritten.
+
+The audio worker shares buffer cursor/length and Freeze acknowledgement with the UI so exports do not use the parent's stale private counters. Capture and DSP algorithms, buffer length and audio timing settings remain unchanged. SELECT retains its existing behavior outside the LIVE mixer.
+
 ## V4.1.7 browser navigation
 
 Close GrainBrick and merge `GrainBrick_V4.1.7_Update.zip` into your installed V4.1.6 folder. MENU goes to the parent folder from the SAMPLE browser, including when a sample file is selected. LEFT provides the same action if MENU was not calibrated. B retains confirmed sample deletion. The footer includes MENU BACK; all other tabs keep their original MENU behavior.

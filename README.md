@@ -2,9 +2,9 @@
 
 [**Download GrainBrick V4.1 Standalone**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.1_Standalone.zip)
 
-[**V4.1.7 browser navigation — for installed V4.1.6**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.1.7_Update.zip)
+[**V4.1.8 save frozen LIVE buffer — for installed V4.1.7**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.1.8_Update.zip)
 
-SELECT opens a SAMPLE playback mixer with GRANULAR, FX and TAPE MIX; the footer shows the shortcut. X switches between the SAMPLE browser and LIVE READY. Recording and project playback fixes are retained. Merge the update into the existing installation with the app closed. See [controls and update notes](experimental/v4-live/consolidated/README.md) and [validation](experimental/v4-live/consolidated/VALIDATION-4.1.4.md).
+Freeze LIVE and press SELECT to save the complete 16-second input buffer as a WAV in samples/recordings. The SAMPLE browser and its separate GRANULAR, FX and TAPE mixer remain available. X switches between the SAMPLE browser and LIVE READY. Recording and project playback fixes are retained. Merge the update into the existing installation with the app closed. See [controls and update notes](experimental/v4-live/consolidated/README.md) and [validation](experimental/v4-live/consolidated/VALIDATION-4.1.8.md).
 
 The complete AntevasinBuild based on official ETRNLIAM GrainBrick beta 1.0, consolidating the tested V4 changes through UI Test 1.13. Includes original native DSP, USB LIVE input, three mix controls, freeze, original REC/edit/save, stereo-pair routing, continuous waveform drawing and six themes.
 

@@ -15,6 +15,46 @@ class RecordingUI:
     def __init__(self,main,controller,router=None):
         self.main=main;self.controller=controller;self.router=router;self.initialized=False
         self.sample_mixer=False;self.sample_selection=0;self._drawing_browser=False;self.pending_delete=None;self._menu_back=False
+    def save_frozen_sample(self):
+        c=self.controller;worker=getattr(self.main,'audio_worker',None)
+        if not c.active() or worker is None or not worker.running:
+            c.message='START AND FREEZE LIVE BEFORE SAVING';return
+        try:
+            source=c.source()
+            if source is None:raise ValueError('NO LIVE AUDIO TO SAVE')
+            audio=source.frozen_snapshot()
+            import os,wave
+            import numpy as np
+            from datetime import datetime
+            app=Path(__file__).resolve().parent
+            folder=Path(getattr(self.main,'RECORDINGS_SAMPLE_DIR',app/'samples'/'recordings'))
+            folder.mkdir(parents=True,exist_ok=True)
+            stem='LIVE_FREEZE_'+datetime.now().strftime('%Y%m%d_%H%M%S')
+            pcm=np.rint(np.clip(audio,-1.,32767./32768.)*32768.).astype('<i2')
+            for index in range(1000):
+                path=folder/(stem+('' if index==0 else '_'+str(index))+'.wav')
+                try:handle=path.open('xb')
+                except FileExistsError:continue
+                try:
+                    with handle:
+                        with wave.open(handle,'wb') as output:
+                            output.setnchannels(2);output.setsampwidth(2);output.setframerate(source.rate)
+                            output.writeframes(pcm.tobytes())
+                except Exception:
+                    path.unlink(missing_ok=True);raise
+                break
+            else:raise OSError('Unable to choose a free recording name')
+            # Match the diagnostic's network-readable media permissions.
+            os.chmod(path,0o666)
+            browser=getattr(self.main,'sample_browser',None)
+            if browser is not None:
+                browser.refresh();self.main.controls.set_sample_count(len(browser))
+                self.main.controls.sample_index=max(0,min(self.main.controls.sample_index,len(browser)-1))
+            c.message='SAVED '+path.name
+            print('LIVE FREEZE SAVED:',path,'frames',len(audio),flush=True)
+        except Exception as exc:
+            c.message=str(exc).upper()
+            print('LIVE FREEZE SAVE FAILED:',str(exc),flush=True)
     def parent_folder(self):
         self.pending_delete=None;self.controller.message=''
         browser=self.main.sample_browser
@@ -149,6 +189,8 @@ class RecordingUI:
             actions=previous_filter(actions)
             if self._menu_back:
                 self._menu_back=False;actions=list(actions)+[('SAMPLE_BACK',None)]
+            if main.controls.current_tab=='SAMPLE' and c.mode=='LIVE' and main.record_mode=='ready':
+                return [('SAVE_FROZEN' if action=='SELECT' else action,value) for action,value in actions]
             if main.controls.current_tab=='SAMPLE' and c.mode!='LIVE' and main.record_mode in ('browser','ready'):
                 return [('SAMPLE_MIXER' if action=='SELECT' else action,value) for action,value in actions]
             return actions
@@ -180,6 +222,9 @@ class RecordingUI:
                 if mode=='browser' and c.mode!='LIVE' and action=='B':
                     if value==0:return True
                     if self.delete_sample():return True
+                if mode=='ready' and c.mode=='LIVE' and action=='SAVE_FROZEN':
+                    if value!=0:self.save_frozen_sample()
+                    return True
                 if mode in ('recording','edit'):
                     if mode=='recording' and action=='Y':
                         if value!=0:main.stop_input_recording_to_editor()
@@ -275,7 +320,7 @@ class RecordingUI:
                 elif main.record_mode=='ready':
                     if c.mode=='LIVE':
                         action='Y FREEZE' if c.active() and c.bus().get('transport.playing')>=.5 else 'Y RESUME' if c.active() else 'Y START'
-                        items=[('D-PAD MIX',gray),('X SAMPLE',accent),(action,accent),('A FREEZE',gray),('B STOP/BACK',gray),('L2/R2 INPUT',gray)]
+                        items=[('D-PAD MIX',gray),('X SAMPLE',accent),(action,accent),('A FREEZE',gray),('B STOP',gray),('SELECT SAVE',accent)] if c.active() and c.bus().get('live.freeze')>=.5 else [('D-PAD MIX',gray),('X SAMPLE',accent),(action,accent),('A FREEZE',gray),('B STOP/BACK',gray),('L2/R2 INPUT',gray)]
                     else:
                         action='A/START PAUSE' if c.bus().get('transport.playing')>=.5 else 'A/START PLAY'
                         items=[('D-PAD MIX',gray),('X LIVE',accent),('Y RECORD',accent),('SELECT/B BACK',gray),(action,accent)]
@@ -318,6 +363,7 @@ class RecordingUI:
             pygame.draw.rect(ui.screen,ui.ACCENT if frozen else ui.DIM,(250,540,96,32),2,border_radius=7)
             ui.text('ON' if frozen else 'OFF',286 if frozen else 280,548,2,ui.ACCENT if frozen else ui.WHITE)
             ui.text('HOLD THE LIVE BUFFER',55,600,2,ui.DIM)
+            if frozen and c.active():ui.text('SELECT: SAVE SAMPLE',55,630,2,ui.WHITE)
         else:
             ui.text('Y: RECORD SAMPLE',55,545,3,ui.WHITE)
             ui.text('LOADED SAMPLE',55,600,2,ui.DIM)

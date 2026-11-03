@@ -103,6 +103,16 @@ class SwitchableSource:
         self.live_engine=None;self.capture=None;self.writer=0;self.written=0;self.processed=0;self._last_report=0
         self.grains=GrainCount(self);self.chain=None
         self.sample_dry=None;self._sample_mix=None
+        from multiprocessing import RawArray,Lock
+        self._history_info=RawArray('q',3) # writer, valid frames, freeze acknowledged
+        self._history_lock=Lock()
+    @property
+    def written(self):return self._written
+    @written.setter
+    def written(self,value):
+        self._written=value
+        if value==0 and hasattr(self,'_history_info'):
+            with self._history_lock:self._history_info[:]=[0,0,0]
     @property
     def parameters(self):return self.chain.parameters if self.chain is not None else self._parameters
     @parameters.setter
@@ -141,10 +151,14 @@ class SwitchableSource:
         self.processed+=frames
         if dry.shape!=(frames,2):raise ValueError('Invalid capture block shape')
         if self.parameters.get('live.freeze')<.5:
-            count=min(frames,self.capacity-self.writer)
-            self.data[self.writer:self.writer+count]=dry[:count]
-            if count<frames:self.data[:frames-count]=dry[count:]
-            self.writer=(self.writer+frames)%self.capacity;self.written+=frames
+            with self._history_lock:
+                count=min(frames,self.capacity-self.writer)
+                self.data[self.writer:self.writer+count]=dry[:count]
+                if count<frames:self.data[:frames-count]=dry[count:]
+                self.writer=(self.writer+frames)%self.capacity;self.written+=frames
+                self._history_info[:]=[self.writer,min(self.written,self.capacity),0]
+        elif not self._history_info[2]:
+            with self._history_lock:self._history_info[2]=1
         if self.live_engine is None:self.live_engine=self.granular_cls(self.sample,self.view,self.rate)
         wet=self.live_engine.render(frames)
         mix=max(0.,min(1.,self.parameters.get('live.mix')))
@@ -155,7 +169,20 @@ class SwitchableSource:
                    self.parameters.get('grain.size'),self.parameters.get('grain.density'),self.parameters.get('grain.pitch'),self.parameters.get('live.freeze')>=.5,
                    self.parameters.get('live.fx_mix'),self.parameters.get('live.tape_mix')),flush=True)
         return (dry*(1.-mix)+wet*mix).astype(np.float32,copy=False)
+    def frozen_snapshot(self):
+        if not self.enabled() or self.parameters.get('live.freeze')<.5:
+            raise ValueError('FREEZE LIVE BEFORE SAVING')
+        if not self._history_lock.acquire(False):raise ValueError('BUFFER SETTLING - PRESS SELECT AGAIN')
+        try:
+            writer,count,frozen=self._history_info[:]
+            if not frozen:raise ValueError('BUFFER SETTLING - PRESS SELECT AGAIN')
+            if not count:raise ValueError('NO LIVE AUDIO TO SAVE')
+            if writer==0:return self.data.copy()
+            return np.concatenate((self.data[writer:],self.data[:writer]))
+        finally:self._history_lock.release()
     def close(self):
+        if self._history_info[2]:
+            with self._history_lock:self._history_info[2]=0
         finalizer=getattr(self,'_finalizer',None)
         self._finalizer=None
         if finalizer is not None:finalizer.cancel()

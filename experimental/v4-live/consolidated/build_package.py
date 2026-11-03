@@ -51,7 +51,7 @@ manifest={'version':VERSION,'kind':'standalone','original_main_sha256':EXPECTED_
           'release_name':f'GrainBrick V{VERSION}','consolidates':'UI Test 1.13',
           'packaging':'Runtime only; NumPy tests, compiler tools, headers and typing stubs omitted',
           'audio_baseline':baseline,'sha256':{name:hashlib.sha256(path.read_bytes()).hexdigest() for name,path in files.items()}}
-manifest['audio_overrides']={'stage_mix.py':'Separate sample FX/Tape blends default to original 100%; LIVE blends unchanged','live_source.py':'Frozen LIVE read anchor preserved; sample granular blend defaults to original 100%','record_monitor.py':'Output-only 10 ms monitor startup fade; saved recordings unchanged'}
+manifest['audio_overrides']={'stage_mix.py':'Separate sample FX/Tape blends default to original 100%; LIVE blends unchanged','live_source.py':'Frozen LIVE read anchor preserved; full-buffer export shares cursor/freeze acknowledgement; sample granular blend defaults to original 100%','record_monitor.py':'Output-only 10 ms monitor startup fade; saved recordings unchanged'}
 manifest['immutable_paths']=[name for name in files if name.startswith('grainbrick-v4/') and not name.startswith(('grainbrick-v4/samples/','grainbrick-v4/projects/'))]
 release=root.parent/f'releases/GrainBrick_V{VERSION}_Standalone.zip'
 with zipfile.ZipFile(release,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as archive:
