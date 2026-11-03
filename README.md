@@ -1,22 +1,29 @@
-# GrainBrick V4.1 — standalone RG35XX Plus build
+# GrainBrick V4.1 Final — RG35XX Plus
 
-[**Download GrainBrick V4.1 Standalone**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.1_Standalone.zip)
+[**Download V4.1 Final — complete standalone**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.1_Final_Standalone.zip)
 
-[**V4.1.10 LIVE control fixes — for installed V4.1.9**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.1.10_Update.zip)
+[**Download personal-data importer**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_Import_Data.sh)
 
-Freeze LIVE and press MENU to save the complete 16-second input buffer as a WAV in samples/recordings. The SAMPLE browser and its separate GRANULAR, FX and TAPE mixer remain available. X switches between the SAMPLE browser and LIVE READY. Recording and project playback fixes are retained. Merge the update into the existing installation with the app closed. See [controls and update notes](experimental/v4-live/consolidated/README.md) and [validation](experimental/v4-live/consolidated/VALIDATION-4.1.8.md).
+The final standalone consolidates the current **V4.1.10** runtime: separate SAMPLE/LIVE mixers, original recording/editor, full 16-second frozen input WAV saving on MENU, corrected LIVE transport/Freeze/stop controls, project loading fixes, sample deletion, folder navigation, stereo USB routing, continuous waveforms and six themes. Original native app/DSP and Amber remain unchanged.
 
-The complete AntevasinBuild based on official ETRNLIAM GrainBrick beta 1.0, consolidating the tested V4 changes through UI Test 1.13. Includes original native DSP, USB LIVE input, three mix controls, freeze, original REC/edit/save, stereo-pair routing, continuous waveform drawing and six themes.
+The clean ZIP contains **GrainBrick V4.1.sh** and **grainbrick-v4/**. No earlier build or patch chain is required. Development files, old updates, logs, caches, diagnostic reports and personal media are excluded; required licenses and compliance sources remain.
 
-Back up any existing `grainbrick-v4` folder before a clean installation. Extract into `/userdata/roms/ports/` and launch **GrainBrick V4.1**. The ZIP contains one launcher plus one app folder; no V3, previous V4, patch chain, downloads or pip installation are required.
+To keep the projects, recordings, samples and settings used during development:
 
-Target: **RG35XX Plus / KNULLI Scarab 20260511**, using system Python 3.12, Pygame and ALSA tools. The pruned NumPy runtime, factory sample/preset, native libraries, assets and licensing materials are bundled. Personal data and development/test files are excluded.
+1. Close the app and rename the current `ports/grainbrick-v4` to `ports/grainbrick-v4-backup`.
+2. Extract the final standalone into `ports/` to create the new app folder.
+3. Put `GrainBrick_Import_Data.sh` in `ports/`, refresh PORTS and launch it once.
+4. Check `grainbrick-v4/Import_Report.txt` for **IMPORT COMPLETE**, then launch **GrainBrick V4.1**. The original backup stays intact. Keep it until your media/projects/settings are confirmed.
 
-[Installation, controls and known limits](experimental/v4-live/consolidated/README.md) · [Release validation](experimental/v4-live/consolidated/VALIDATION-4.1.md) · [Credits](experimental/v4-live/consolidated/CREDITS.md)
+The importer copies only personal data and preference files. Conflicting new personal media blocks import rather than being overwritten. After confirmation, move the backup and optional diagnostic/import scripts off the handheld for a clean PORTS folder.
 
-The AUDIO4c saved-REC startup click remains unresolved; Tascam was reported free of that click. Audio behavior is retained from the tested build. The clean V4.1 installation was user-confirmed working. The 4.1.4 update is verified on the host and under ARM emulation and still needs device confirmation; emulation does not establish USB hardware performance.
+Target: **RG35XX Plus / KNULLI Scarab 20260511**, using system Python 3.12, Pygame and ALSA. A pruned NumPy runtime, factory demo/preset, original native libraries, assets and legal notices are bundled. The internal version remains 4.1.10; Final is the consolidated packaging label.
 
-Historical test/update ZIPs remain available for reference; they are not installation dependencies.
+[Installation and controls](experimental/v4-live/consolidated/README.md) · [Final validation](experimental/v4-live/consolidated/VALIDATION-4.1-FINAL.md) · [Credits](experimental/v4-live/consolidated/CREDITS.md)
+
+The AUDIO4c saved-REC startup click remains unresolved; the user reported Tascam free of that click. Direct Tascam connection is the confirmed working setup; the tested charging/data dongle did not appear in the handheld's USB/ALSA inventory. The final package is verified on the host and under ARM emulation; hardware timing still needs device confirmation.
+
+Historical builds remain in the repository for reference; they are not installation dependencies.
 
 ---
 

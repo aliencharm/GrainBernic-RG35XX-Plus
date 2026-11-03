@@ -10,7 +10,10 @@ from packaging_rules import include_vendor
 root=Path(__file__).resolve().parent
 parser=argparse.ArgumentParser()
 parser.add_argument('--original',type=Path,required=True,help='Extracted original grainbrick-beta directory')
-source=parser.parse_args().original.resolve()
+parser.add_argument('--output',type=Path,help='Standalone ZIP destination')
+parser.add_argument('--release-name',help='Display name in the release manifest')
+args=parser.parse_args()
+source=args.original.resolve()
 assert hashlib.sha256((source/MAIN).read_bytes()).hexdigest()==EXPECTED_MAIN,'Unexpected original native application'
 baseline=json.loads((root/'audio-baseline.json').read_text())
 launcher_version='.'.join(VERSION.split('.')[:2])
@@ -48,12 +51,13 @@ for relative,expected in json.loads((root/'factory-content.json').read_text()).i
     assert hashlib.sha256(path.read_bytes()).hexdigest()==expected,'Original demo differs'
     files['grainbrick-v4/samples/'+path.name]=path
 manifest={'version':VERSION,'kind':'standalone','original_main_sha256':EXPECTED_MAIN,
-          'release_name':f'GrainBrick V{VERSION}','consolidates':'UI Test 1.13',
+          'release_name':args.release_name or f'GrainBrick V{VERSION}','consolidates':f'V{VERSION}',
           'packaging':'Runtime only; NumPy tests, compiler tools, headers and typing stubs omitted',
           'audio_baseline':baseline,'sha256':{name:hashlib.sha256(path.read_bytes()).hexdigest() for name,path in files.items()}}
 manifest['audio_overrides']={'stage_mix.py':'Separate sample FX/Tape blends default to original 100%; LIVE blends unchanged','live_source.py':'Frozen LIVE read anchor preserved; full-buffer export shares cursor/freeze acknowledgement; sample granular blend defaults to original 100%','record_monitor.py':'Output-only 10 ms monitor startup fade; saved recordings unchanged'}
 manifest['immutable_paths']=[name for name in files if name.startswith('grainbrick-v4/') and not name.startswith(('grainbrick-v4/samples/','grainbrick-v4/projects/'))]
-release=root.parent/f'releases/GrainBrick_V{VERSION}_Standalone.zip'
+release=args.output or root.parent/f'releases/GrainBrick_V{VERSION}_Standalone.zip'
+release.parent.mkdir(parents=True,exist_ok=True)
 with zipfile.ZipFile(release,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as archive:
     for name,path in files.items():
         info=zipfile.ZipInfo(name,(2026,11,1,0,0,0));info.compress_type=zipfile.ZIP_DEFLATED
