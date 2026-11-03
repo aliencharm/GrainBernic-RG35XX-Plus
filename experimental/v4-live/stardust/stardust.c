@@ -6,12 +6,14 @@
 #define PI 3.14159265358979323846f
 #define LUT 2048
 #define LINES 8
+#include "pitchcloud.h"
 typedef struct {
- int sr,fdn_cap,pitch_cap,pre_cap,wi,pwi,prewi,ready;
- float *fdn,*pitch,*pre,*dry;
+ int sr,fdn_cap,pre_cap,wi,prewi,ready;
+ float *fdn,*pre,*dry;
+ PitchCloud cloud;
  float damp[8],damp2[8],delay[8],gain[8],norm[8],hp[2],pitch_lp[2][2];
  float diffuse[2][4][1024];int dpi[2][4],dlen[2][4];
- float phase[2],modphase,ratio,bright,aa,send,ret,input,pretime,depth;
+ float modphase,ratio,bright,aa,send,ret,input,pretime,depth;
  float sine[LUT+1];
 } Stardust;
 static const float times[8]={.0297f,.0371f,.0411f,.0437f,.0533f,.0617f,.0713f,.0797f};
@@ -34,21 +36,22 @@ static float read2(const float*b,int cap,int wi,float delay,int c){
 void* stardust_create(int rate){
  if(rate<8000||rate>96000)return NULL;
  Stardust*s=calloc(1,sizeof(*s));if(!s)return NULL;
- s->sr=rate;s->fdn_cap=(int)(rate*.42f)+32;s->pitch_cap=(int)(rate*.24f)+128;s->pre_cap=(int)(rate*1.01f)+8;
- s->fdn=calloc(8*s->fdn_cap,sizeof(float));s->pitch=calloc(2*s->pitch_cap,sizeof(float));s->pre=calloc(2*s->pre_cap,sizeof(float));s->dry=calloc(2*s->pre_cap,sizeof(float));
- if(!s->fdn||!s->pitch||!s->pre||!s->dry){free(s->fdn);free(s->pitch);free(s->pre);free(s->dry);free(s);return NULL;}
+ s->sr=rate;s->fdn_cap=(int)(rate*.42f)+32;s->pre_cap=(int)(rate*1.01f)+8;
+ s->fdn=calloc(8*s->fdn_cap,sizeof(float));s->pre=calloc(2*s->pre_cap,sizeof(float));s->dry=calloc(2*s->pre_cap,sizeof(float));
+ if(!s->fdn||!s->pre||!s->dry){free(s->fdn);free(s->pre);free(s->dry);free(s);return NULL;}
  for(int c=0;c<2;c++)for(int j=0;j<4;j++){int base[4]={149,211,263,293};s->dlen[c][j]=(base[j]+c*17)*rate/48000;}
+ cloud_init(&s->cloud);
  for(int i=0;i<=LUT;i++)s->sine[i]=sinf(2*PI*i/LUT);
  return s;
 }
 void stardust_clear(void*handle){
  Stardust*s=handle;if(!s)return;
- memset(s->fdn,0,8*s->fdn_cap*sizeof(float));memset(s->pitch,0,2*s->pitch_cap*sizeof(float));memset(s->pre,0,2*s->pre_cap*sizeof(float));memset(s->dry,0,2*s->pre_cap*sizeof(float));
+ memset(s->fdn,0,8*s->fdn_cap*sizeof(float));memset(s->pre,0,2*s->pre_cap*sizeof(float));memset(s->dry,0,2*s->pre_cap*sizeof(float));
  memset(s->diffuse,0,sizeof(s->diffuse));memset(s->dpi,0,sizeof(s->dpi));
  memset(s->damp,0,sizeof(s->damp));memset(s->hp,0,sizeof(s->hp));memset(s->damp2,0,sizeof(s->damp2));memset(s->pitch_lp,0,sizeof(s->pitch_lp));
- s->wi=s->pwi=s->prewi=0;s->phase[0]=s->phase[1]=s->modphase=0;s->ready=0;
+ s->wi=s->prewi=0;s->modphase=0;cloud_clear(&s->cloud);s->ready=0;
 }
-void stardust_destroy(void*handle){Stardust*s=handle;if(s){free(s->fdn);free(s->pitch);free(s->pre);free(s->dry);free(s);}}
+void stardust_destroy(void*handle){Stardust*s=handle;if(s){free(s->fdn);free(s->pre);free(s->dry);free(s);}}
 /* p: predelay ms, size, decay, pitch st, brightness, freq Hz, depth, input, send, return */
 int stardust_process(void*handle,const float*feed,float*audio,int frames,const float*p){
  Stardust*s=handle;if(!s||!feed||!audio||!p||frames<0)return -1;
@@ -68,7 +71,6 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
   for(int j=0;j<8;j++){s->delay[j]=target_delay[j];s->gain[j]=target_gain[j];s->norm[j]=target_norm[j];}
   s->ratio=ratio;s->bright=bright;s->aa=aa;s->pretime=predelay;s->input=input;s->send=send;s->ret=ret;s->depth=depth;s->ready=1;
  }
- float window=.12f*s->sr,min_delay=.015f*s->sr;
  for(int n=0;n<frames;n++){
   s->ratio+=alpha*(ratio-s->ratio);s->bright+=alpha*(bright-s->bright);s->aa+=alpha*(aa-s->aa);
   s->pretime+=alpha*(predelay-s->pretime);s->depth+=alpha*(depth-s->depth);
@@ -89,21 +91,18 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
    s->damp[j]=clean(s->damp[j]+s->bright*(v-s->damp[j]));s->damp2[j]=clean(s->damp2[j]+s->bright*(s->damp[j]-s->damp2[j]));z[j]=s->damp2[j];sum+=z[j];
    wet[0]+=z[j]*sl[j]*.35355339f;wet[1]+=z[j]*srn[j]*.35355339f;
   }
+  float pitch_input[2],pitch_ratio[2],pitched[2];
+  float shift=clamp(fabsf(s->ratio-1)*8,0,1);
   for(int c=0;c<2;c++){
    s->pitch_lp[c][0]=clean(s->pitch_lp[c][0]+s->aa*(wet[c]-s->pitch_lp[c][0]));
    s->pitch_lp[c][1]=clean(s->pitch_lp[c][1]+s->aa*(s->pitch_lp[c][0]-s->pitch_lp[c][1]));
-   s->pitch[2*s->pwi+c]=s->pitch_lp[c][1];
+   pitch_input[c]=s->pitch_lp[c][1];
+   float modulation=.035f*(s->depth/(.006f*s->sr))*sine(s,s->modphase+c*.31f);
+   pitch_ratio[c]=s->ratio*(1+(c? .0015f:-.0015f)*shift+modulation);
   }
-  float pitched[2];
+  cloud_tick(&s->cloud,pitch_input,pitched,pitch_ratio);
   for(int c=0;c<2;c++){
-   /* Independent read-head phases decorrelate the octave cloud in stereo. */
-   float phase=s->phase[c];
-   float phase_b=phase+.5f;if(phase_b>=1)phase_b-=1;
-   float weight=.5f-.5f*sine(s,phase+.25f);
-   float movement=2*s->depth*sine(s,s->modphase+c*.31f);
-   float a=read2(s->pitch,s->pitch_cap,s->pwi,min_delay+phase*window+movement,c);
-   float b=read2(s->pitch,s->pitch_cap,s->pwi,min_delay+phase_b*window+movement,c);
-   float v=a*weight+b*(1-weight);s->hp[c]=clean(s->hp[c]+.0015f*(v-s->hp[c]));pitched[c]=v-s->hp[c];
+   float v=clean(pitched[c]);s->hp[c]=clean(s->hp[c]+.0015f*(v-s->hp[c]));pitched[c]=v-s->hp[c];
   }
   for(int j=0;j<8;j++){
    float base=z[j]-.25f*sum;
@@ -113,22 +112,16 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
    float v=injected+s->gain[j]*(base+.32f*(shifted-projection));
    s->fdn[j*s->fdn_cap+s->wi]=clean(v);
   }
-  float shift=clamp(fabsf(s->ratio-1)*8,0,1);
   for(int c=0;c<2;c++){
    float dry=read2(s->dry,s->pre_cap,s->prewi,fmaxf(0,-s->pretime),c);
    /* The audible return is chiefly pitched, independent of the loop's loss budget.
       Near zero transposition, retain the unshifted output without doubling it. */
-   float cloud=wet[c]*(1-.65f*shift)+pitched[c]*(.93675f*shift);
+   float cloud=wet[c]*(1-.8f*shift)+pitched[c]*(.979796f*shift);
    float v=dry*s->input+cloud*s->ret;
    audio[2*n+c]=isfinite(v)?clamp(v,-4.f,4.f):0;
   }
-  for(int c=0;c<2;c++){
-   float ratio_c=s->ratio*(1+(c? .0015f:-.0015f)*shift);
-   s->phase[c]+=(1-ratio_c)/window;s->phase[c]-=floorf(s->phase[c]);
-  }
   s->modphase+=freq/s->sr;if(s->modphase>=1)s->modphase-=1;
   if(++s->wi==s->fdn_cap)s->wi=0;
-  if(++s->pwi==s->pitch_cap)s->pwi=0;
   if(++s->prewi==s->pre_cap)s->prewi=0;
  }
  return 0;

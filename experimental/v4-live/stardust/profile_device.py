@@ -22,13 +22,16 @@ with (app/'.lock').open('a') as lock:
     feed=np.repeat((np.sin(np.arange(n)*2*np.pi*440/rate)*.2).astype(np.float32)[:,None],2,axis=1)
     audio=feed.copy()
     for _ in range(64):np.copyto(audio,feed);engine.process(feed,audio,params)
-    times=[]
+    times=[];cpu_times=[]
     for _ in range(512):
-        np.copyto(audio,feed);start=time.perf_counter_ns();engine.process(feed,audio,params)
+        np.copyto(audio,feed);cpu_start=time.thread_time_ns();start=time.perf_counter_ns();engine.process(feed,audio,params)
         times.append((time.perf_counter_ns()-start)/1e6)
+        cpu_times.append((time.thread_time_ns()-cpu_start)/1e6)
     engine.close();values=np.array(times);budget=n/rate*1000
     print('Rate:',rate,'frames:',n,'block budget ms:',round(budget,3))
     print('Mean ms:',round(float(values.mean()),4),'median ms:',round(float(np.median(values)),4),'p95 ms:',round(float(np.percentile(values,95)),4),'max ms:',round(float(values.max()),4))
     print('Mean portion of one audio-block budget:',round(float(values.mean())/budget*100,2),'percent')
+    print('Mean thread CPU ms:',round(float(np.mean(cpu_times)),4),'portion of one block budget:',round(float(np.mean(cpu_times))/budget*100,2),'percent')
+    print('Wall time includes scheduling; thread CPU excludes waiting. CPU figures include timing-call overhead.')
     print('Stardust only. Granular, other FX, tape, USB, UI and scheduling overhead are excluded.')
     print('For full-app headroom, compare the DSP meter and overruns with Original/Stardust on the handheld.')
