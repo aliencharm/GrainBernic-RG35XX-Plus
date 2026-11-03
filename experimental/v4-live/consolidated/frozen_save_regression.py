@@ -1,10 +1,11 @@
 """Full frozen-buffer export in the isolated original ARM application."""
 from pathlib import Path
 import wave
+import json
 import numpy as np
 
 class FrozenChecks:
-    actions={1:'X',2:'SELECT',3:'Y',4:'SELECT',5:'A',6:'SELECT',7:'SELECT',8:'A',9:'SELECT',10:'X',11:'EXIT'}
+    actions={1:'X',2:'MENU',3:'Y',4:'MENU',5:'A',7:'MENU',8:'A',9:'MENU',10:'X',11:'EXIT'}
     def __init__(self,app):self.app=Path(app)
     def prepare(self):
         assert 'work' in self.app.parts or self.app.is_relative_to(Path('/tmp'))
@@ -39,6 +40,18 @@ class FrozenChecks:
             self.expected=c.source().frozen_snapshot()
             assert self.expected.shape==(16*48000,2)
             main.params.set('grain.size',.02);main.params.set('roam.range',.1)
+            assert c.filter_record_actions([('SELECT',None)])==[('SELECT',None)]
+            import pygame
+            mapping=json.loads((self.app/'gb_buttons.json').read_text())
+            physical=next(int(k) for k,v in mapping['buttons'].items() if v==14)
+            pygame.event.post(pygame.event.Event(pygame.JOYBUTTONDOWN,button=physical,joy=0))
+            pygame.event.post(pygame.event.Event(pygame.JOYBUTTONUP,button=physical,joy=0))
+            events=pygame.event.get()
+            assert not any(e.type in (pygame.JOYBUTTONDOWN,pygame.JOYBUTTONUP) and e.button==14 for e in events)
+            actions=c.filter_record_actions([])
+            assert ('SAVE_FROZEN',None) in actions
+            for action,value in actions:main.handle_record_action(action,value)
+            print('PASS physical MENU saves frozen input; SELECT passes through unchanged',flush=True)
         if n in (7,8):
             assert len(self.files())==n-6
             assert main.audio_worker is self.worker and self.worker.running

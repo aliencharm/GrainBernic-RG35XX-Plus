@@ -172,10 +172,10 @@ class SwitchableSource:
     def frozen_snapshot(self):
         if not self.enabled() or self.parameters.get('live.freeze')<.5:
             raise ValueError('FREEZE LIVE BEFORE SAVING')
-        if not self._history_lock.acquire(False):raise ValueError('BUFFER SETTLING - PRESS SELECT AGAIN')
+        if not self._history_lock.acquire(False):raise ValueError('BUFFER SETTLING - PRESS MENU AGAIN')
         try:
             writer,count,frozen=self._history_info[:]
-            if not frozen:raise ValueError('BUFFER SETTLING - PRESS SELECT AGAIN')
+            if not frozen:raise ValueError('BUFFER SETTLING - PRESS MENU AGAIN')
             if not count:raise ValueError('NO LIVE AUDIO TO SAVE')
             if writer==0:return self.data.copy()
             return np.concatenate((self.data[writer:],self.data[:writer]))

@@ -4,6 +4,10 @@
 
 AntevasinBuild, based on the official **ETRNLIAM GrainBrick beta 1.0**, combines the original app/DSP with the tested V4 live-input, routing and UI changes through UI Test 1.13. The proprietary original engine and native libraries remain unchanged. This release consolidates the working build; it does not introduce a new audio algorithm.
 
+## V4.1.9 MENU saves frozen LIVE audio
+
+Close GrainBrick and merge `GrainBrick_V4.1.9_Update.zip` into installed V4.1.8. MENU now saves the full frozen LIVE buffer; SELECT retains its current pause/resume behavior. Freeze first, then press MENU and look for SAVED LIVE_FREEZE... below the controls. The footer and screen show MENU SAVE. Files remain in samples/recordings. MENU still goes to the parent folder in the SAMPLE browser.
+
 ## V4.1.8 save the full frozen LIVE sample
 
 Close the app and merge `GrainBrick_V4.1.8_Update.zip` into installed V4.1.7, retaining the launcher, media and preferences.
