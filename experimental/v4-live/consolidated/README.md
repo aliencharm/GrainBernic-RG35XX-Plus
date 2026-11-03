@@ -1,8 +1,14 @@
 # GrainBrick V4.2 — RG35XX Plus
 
-A complete standalone AntevasinBuild based on official **ETRNLIAM GrainBrick beta 1.0**. This V4.2 standalone consolidates the working V4.1.10 controls, SAMPLE/LIVE mixers, project fixes, themes and frozen-buffer saving. The internal version is **4.2**; audio and control behavior are retained from the working V4.1.10 build. No earlier installation or patch chain is required.
+A complete standalone AntevasinBuild based on official **ETRNLIAM GrainBrick beta 1.0**. This V4.2 standalone consolidates the working V4.1.10 controls, SAMPLE/LIVE mixers, project fixes, themes and frozen-buffer saving. The current update revision is **4.2.1**; it corrects dry SAMPLE playback while retaining the V4.2 controls. No earlier installation or patch chain is required.
 
 Target: **Anbernic RG35XX Plus / KNULLI Scarab 20260511**, with system Python 3.12, Pygame and ALSA tools. The required NumPy runtime is bundled.
+
+## V4.2.1 SAMPLE dry playback update
+
+For an installed V4.2, close the app and merge `GrainBrick_V4.2.1_Update.zip` into the existing ports folder. Keep the GrainBrick V4.2 launcher, media and settings.
+
+The SAMPLE mixer now plays the original file when its mix controls are zero, without requiring ROAM. Turning GRANULAR off also passes the original sample through, even if GRANULAR MIX is still at 100%. Enabled processing is blended in as its mix increases. Dry playback loops at the original sample rate and follows play/pause. The native granular engine remains the fully wet path; LIVE controls, Freeze/export and SAMPLE recording are unchanged.
 
 ## Clean installation
 

@@ -77,12 +77,23 @@ class LiveParameterView:
             return value*min(1.,source.written/source.capacity)
         return value
 
-class SampleDryView:
-    """Use the original native file player with granular/motion/pitch disabled."""
-    OVERRIDES={'grain.enabled':0.,'roam.enabled':0.,'motion.enabled':0.,'grain.pitch':0.}
-    def __init__(self,source):self.source=weakref.proxy(source)
-    def get(self,key):
-        return self.OVERRIDES[key] if key in self.OVERRIDES else self.source.parameters.get(key)
+class SampleFilePlayer:
+    """Straight file playback, independent of grain/roam/motion enable switches."""
+    def __init__(self,source):
+        self.source=weakref.proxy(source);self.sample=source.file_engine.sample;self.cursor=0.
+    def render(self,frames):
+        if self.source.parameters.get('transport.playing')<.5:return np.zeros((frames,2),np.float32)
+        data=self.sample.data
+        if data.ndim==1:data=data[:,None]
+        count=len(data)
+        if not count:return np.zeros((frames,2),np.float32)
+        step=float(getattr(self.sample,'sample_rate',self.source.rate))/self.source.rate
+        positions=(self.cursor+np.arange(frames,dtype=np.float64)*step)%count
+        lower=positions.astype(np.int64);fraction=(positions-lower).astype(np.float32)[:,None]
+        result=data[lower]+(data[(lower+1)%count]-data[lower])*fraction
+        self.cursor=(self.cursor+frames*step)%count
+        if result.shape[1]==1:result=np.repeat(result,2,axis=1)
+        return result.astype(np.float32,copy=False)
 
 class GrainCount:
     def __init__(self,source):self.source=weakref.proxy(source)
@@ -102,7 +113,7 @@ class SwitchableSource:
         self.view=LiveParameterView(self)
         self.live_engine=None;self.capture=None;self.writer=0;self.written=0;self.processed=0;self._last_report=0
         self.grains=GrainCount(self);self.chain=None
-        self.sample_dry=None;self._sample_mix=None
+        self.sample_dry=None;self._sample_mix=None;self._file_frames=0
         from multiprocessing import RawArray,Lock
         self._history_info=RawArray('q',3) # writer, valid frames, freeze acknowledged
         self._history_lock=Lock()
@@ -127,12 +138,16 @@ class SwitchableSource:
             self.close()
             self.file_engine.parameters=self.parameters
             wet=self.file_engine.render(frames)
+            position=self._file_frames
+            if self.parameters.get('transport.playing')>=.5:self._file_frames+=frames
             target=max(0.,min(1.,self.parameters.get('sample.granular_mix')))
+            if self.parameters.get('grain.enabled')<.5:target=0.
             current=target if self._sample_mix is None else self._sample_mix
             self._sample_mix=target
             if self.sample_dry is None and current==1. and target==1.:return wet
             if self.sample_dry is None:
-                self.sample_dry=self.granular_cls(self.file_engine.sample,SampleDryView(self),self.rate)
+                self.sample_dry=SampleFilePlayer(self)
+            self.sample_dry.cursor=position*float(getattr(self.file_engine.sample,'sample_rate',self.rate))/self.rate
             dry=self.sample_dry.render(frames)
             if current==1. and target==1.:return wet
             if current==target:weights=target

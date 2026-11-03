@@ -18,12 +18,12 @@ integrated='--integrated' in sys.argv
 final_entry='--final-entry' in sys.argv
 controller=None
 project_checks=None
-if '--project-playback' in sys.argv or '--sample-mixer' in sys.argv or '--input-unavailable' in sys.argv or '--sample-delete' in sys.argv or '--frozen-save' in sys.argv or '--live-controls' in sys.argv:
-    checks_file='live_controls_regression.py' if '--live-controls' in sys.argv else 'frozen_save_regression.py' if '--frozen-save' in sys.argv else 'sample_delete_regression.py' if '--sample-delete' in sys.argv else 'input_unavailable_regression.py' if '--input-unavailable' in sys.argv else 'sample_mixer_regression.py' if '--sample-mixer' in sys.argv else 'project_regression.py'
+if '--project-playback' in sys.argv or '--sample-mixer' in sys.argv or '--input-unavailable' in sys.argv or '--sample-delete' in sys.argv or '--frozen-save' in sys.argv or '--live-controls' in sys.argv or '--preview-mixer' in sys.argv:
+    checks_file='preview_mixer_regression.py' if '--preview-mixer' in sys.argv else 'live_controls_regression.py' if '--live-controls' in sys.argv else 'frozen_save_regression.py' if '--frozen-save' in sys.argv else 'sample_delete_regression.py' if '--sample-delete' in sys.argv else 'input_unavailable_regression.py' if '--input-unavailable' in sys.argv else 'sample_mixer_regression.py' if '--sample-mixer' in sys.argv else 'project_regression.py'
     path=Path(__file__).resolve().parents[1]/'consolidated'/checks_file
     spec=importlib.util.spec_from_file_location('v4_project_regression',path)
     module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
-    checks_cls=module.LiveControlsChecks if '--live-controls' in sys.argv else module.FrozenChecks if '--frozen-save' in sys.argv else module.DeleteChecks if '--sample-delete' in sys.argv else module.InputChecks if '--input-unavailable' in sys.argv else module.MixerChecks if '--sample-mixer' in sys.argv else module.ProjectChecks
+    checks_cls=module.PreviewMixerChecks if '--preview-mixer' in sys.argv else module.LiveControlsChecks if '--live-controls' in sys.argv else module.FrozenChecks if '--frozen-save' in sys.argv else module.DeleteChecks if '--sample-delete' in sys.argv else module.InputChecks if '--input-unavailable' in sys.argv else module.MixerChecks if '--sample-mixer' in sys.argv else module.ProjectChecks
     project_checks=checks_cls(app);project_checks.prepare()
 state={'installed':False,'frames':0,'worker_constructed':0,'worker_started':0,'worker_stopped':0,'record_overlay_calls':0,'record_start_delegated':0}
 report={}

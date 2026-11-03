@@ -2,6 +2,10 @@
 
 [**Download V4.2 — complete standalone**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.2_Standalone.zip)
 
+[**V4.2.1 dry SAMPLE playback update — for installed V4.2**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.2.1_Update.zip)
+
+SAMPLE plays the original file at zero mixes or with GRANULAR disabled, without needing ROAM. Merge the small update with the app closed; media/settings and the V4.2 launcher are retained.
+
 [**Download personal-data importer**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.2_Import_Data.sh)
 
 The V4.2 standalone consolidates the working **V4.1.10** runtime: separate SAMPLE/LIVE mixers, original recording/editor, full 16-second frozen input WAV saving on MENU, corrected LIVE transport/Freeze/stop controls, project loading fixes, sample deletion, folder navigation, stereo USB routing, continuous waveforms and six themes. Original native app/DSP and Amber remain unchanged.

@@ -31,13 +31,18 @@ class MixerChecks:
         main.controls.tab_index=main.controls.TABS.index('GRAIN')
         assert c.filter_record_actions([('SELECT',None)])==[('SELECT',None)]
         main.controls.tab_index=main.controls.TABS.index('SAMPLE')
-        bus=main.params;source=c.source();engine_cls=type(source.file_engine);original_render=engine_cls.render
+        bus=main.params;bus.set('grain.enabled',1);source=c.source();engine_cls=type(source.file_engine);original_render=engine_cls.render
         seen={}
         def observe(engine,n):
             result=original_render(engine,n)
             if engine is source.file_engine:seen['wet']=result.copy()
             elif engine is source.sample_dry:seen['dry']=result.copy()
             return result
+        from live_source import SampleFilePlayer
+        original_dry=SampleFilePlayer.render
+        def observe_dry(engine,n):
+            result=original_dry(engine,n);seen['dry']=result.copy();return result
+        SampleFilePlayer.render=observe_dry
         engine_cls.render=observe
         try:
             bus.set('sample.granular_mix',1)
@@ -48,8 +53,9 @@ class MixerChecks:
                 result=source.render(512)
                 expected=seen['dry']+(seen['wet']-seen['dry'])*mix
                 np.testing.assert_allclose(result,expected,rtol=1e-6,atol=1e-7)
-        finally:engine_cls.render=original_render
-        print('PASS original native SAMPLE granular dry/half/full blend and default passthrough',flush=True)
+        finally:
+            engine_cls.render=original_render;SampleFilePlayer.render=original_dry
+        print('PASS native granular + straight-file SAMPLE dry/half/full blend and default passthrough',flush=True)
         class Observe:
             def __init__(self,engine):self.engine=engine
             def process(self,audio,p,*a,**kw):

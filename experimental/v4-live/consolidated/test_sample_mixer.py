@@ -24,7 +24,7 @@ class Effect:
 
 class SampleMixerTests(unittest.TestCase):
     def source(self):
-        bus=add_live_parameters(Bus());sample=types.SimpleNamespace(data=np.zeros((48000,2),np.float32))
+        bus=add_live_parameters(Bus());sample=types.SimpleNamespace(data=np.full((48000,2),.2,np.float32))
         engine=Engine(sample,bus,48000)
         source=SwitchableSource(engine,bus,Engine,lambda:(_ for _ in ()).throw(AssertionError('Sample mode opened capture')))
         self.addCleanup(source.close);return bus,engine,source
@@ -45,6 +45,22 @@ class SampleMixerTests(unittest.TestCase):
         self.assertAlmostEqual(float(result[0,0]),.2,places=6)
         self.assertAlmostEqual(float(result[-1,0]),.6,places=6)
         self.assertEqual(bus.get('live.mix'),0)
+    def test_straight_file_dry_loops_and_pauses_without_roam(self):
+        bus,engine,source=self.source();engine.sample.data=np.repeat(np.array([.1,.2,.3,.4],np.float32)[:,None],2,axis=1)
+        bus.set('sample.granular_mix',0);bus.set('roam.enabled',0)
+        np.testing.assert_allclose(source.render(6)[:,0],[.1,.2,.3,.4,.1,.2])
+        bus.set('transport.playing',0);np.testing.assert_array_equal(source.render(5),np.zeros((5,2)))
+        bus.set('transport.playing',1)
+        np.testing.assert_allclose(source.render(2)[:,0],[.3,.4])
+    def test_straight_file_dry_resamples_at_original_sample_rate(self):
+        bus,engine,source=self.source();engine.sample.sample_rate=24000
+        engine.sample.data=np.repeat(np.array([0,.2,.4,.6],np.float32)[:,None],2,axis=1)
+        bus.set('sample.granular_mix',0)
+        np.testing.assert_allclose(source.render(8)[:,0],[0,.1,.2,.3,.4,.5,.6,.3],atol=1e-7)
+    def test_disabled_granular_plays_original_even_with_full_mix(self):
+        bus,engine,source=self.source();engine.sample.data=np.full((100,2),.7,np.float32)
+        bus.set('grain.enabled',0);bus.set('sample.granular_mix',1)
+        np.testing.assert_allclose(source.render(512),.7)
     def test_sample_fx_and_tape_mixes_default_to_original_and_bypass_only_the_stage(self):
         for key in ('live.fx_mix','live.tape_mix'):
             for mix,expected in ((0.,1.),(.5,1.5),(1.,2.)):

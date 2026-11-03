@@ -54,7 +54,7 @@ manifest={'version':VERSION,'kind':'standalone','original_main_sha256':EXPECTED_
           'release_name':args.release_name or f'GrainBrick V{VERSION}','consolidates':'V4.1.10',
           'packaging':'Runtime only; NumPy tests, compiler tools, headers and typing stubs omitted',
           'audio_baseline':baseline,'sha256':{name:hashlib.sha256(path.read_bytes()).hexdigest() for name,path in files.items()}}
-manifest['audio_overrides']={'stage_mix.py':'Separate sample FX/Tape blends default to original 100%; LIVE blends unchanged','live_source.py':'Frozen LIVE read anchor preserved; full-buffer export shares cursor/freeze acknowledgement; sample granular blend defaults to original 100%','record_monitor.py':'Output-only 10 ms monitor startup fade; saved recordings unchanged'}
+manifest['audio_overrides']={'stage_mix.py':'Separate sample FX/Tape blends default to original 100%; LIVE blends unchanged','live_source.py':'Straight-file SAMPLE dry playback and disabled-granular bypass; frozen LIVE export and native wet engine retained','record_monitor.py':'Output-only 10 ms monitor startup fade; saved recordings unchanged'}
 manifest['immutable_paths']=[name for name in files if name.startswith('grainbrick-v4/') and not name.startswith(('grainbrick-v4/samples/','grainbrick-v4/projects/'))]
 release=args.output or root.parent/f'releases/GrainBrick_V{VERSION}_Standalone.zip'
 release.parent.mkdir(parents=True,exist_ok=True)
