@@ -47,8 +47,12 @@ class PreviewMixerChecks:
             assert Path(main.sample.path)==self.path,('Mixer did not load the previewed file',main.sample.path)
             assert main.audio_worker.running
             assert main.params.get('transport.playing')==0
+            main.handle_record_action('A',None)
+            assert main.params.get('transport.playing')==0 and main.record_mode=='ready'
         if n in (4,9,14):
             assert main.audio_worker.running and main.params.get('transport.playing')==1
+            main.handle_record_action('A',None)
+            assert main.params.get('transport.playing')==1 and main.record_mode=='ready'
             peak=max(float(np.max(np.abs(main.dsp.render(512)))) for _ in range(8))
             assert peak>.001,peak
     def after_draw(self,main,state):
@@ -56,4 +60,4 @@ class PreviewMixerChecks:
             import pygame
             pygame.image.save(main.ui.screen,str(self.app/f'preview-mixer-{state["frames"]}.png'))
     def finish(self,main,state):
-        print('PASS original preview player to SAMPLE mixer, loaded-file preview handoff and disabled-processing playback, native DSP sound and repeated cycles',flush=True)
+        print('PASS original preview player to SAMPLE mixer, loaded-file preview handoff and disabled-processing playback, native DSP sound, START-only transport, harmless A and repeated cycles',flush=True)

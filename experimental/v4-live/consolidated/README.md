@@ -1,8 +1,12 @@
 # GrainBrick V4.2 — RG35XX Plus
 
-A complete standalone AntevasinBuild based on official **ETRNLIAM GrainBrick beta 1.0**. This V4.2 standalone consolidates the working V4.1.10 controls, SAMPLE/LIVE mixers, project fixes, themes and frozen-buffer saving. The current update revision is **4.2.1**; it corrects dry SAMPLE playback while retaining the V4.2 controls. No earlier installation or patch chain is required.
+A complete standalone AntevasinBuild based on official **ETRNLIAM GrainBrick beta 1.0**. This V4.2 standalone consolidates the working V4.1.10 controls, SAMPLE/LIVE mixers, project fixes, themes and frozen-buffer saving. The current update revision is **4.2.2**; it corrects dry SAMPLE playback while retaining the V4.2 controls. No earlier installation or patch chain is required.
 
 Target: **Anbernic RG35XX Plus / KNULLI Scarab 20260511**, with system Python 3.12, Pygame and ALSA tools. The required NumPy runtime is bundled.
+
+## V4.2.2 SAMPLE mixer controls
+
+Close the app and merge `GrainBrick_V4.2.2_Update.zip` into installed V4.2 or V4.2.1. Keep the GrainBrick V4.2 launcher, media and settings. START is now the only play/pause button on the SAMPLE mixer; A is unassigned there. A still loads files in the browser and toggles Freeze in LIVE. The update includes the V4.2.1 dry-playback fix and leaves audio processing unchanged from that revision.
 
 ## V4.2.1 SAMPLE dry playback update
 
@@ -48,7 +52,7 @@ The SAMPLE browser is the main SAMPLE screen:
 - **MENU or LEFT:** go up a folder. B on folders retains back behavior.
 - **L2/R2:** select the USB input pair. **X:** open LIVE READY.
 
-The SAMPLE mixer has separate GRANULAR MIX, FX MIX and TAPE MIX controls. Up/down selects a mix; left/right adjusts it. A/START plays/pauses the sample. Defaults are 100% and old projects retain their original playback. LIVE mix settings are separate.
+The SAMPLE mixer has separate GRANULAR MIX, FX MIX and TAPE MIX controls. Up/down selects a mix; left/right adjusts it. START plays/pauses the sample; A is unassigned on the SAMPLE mixer screen. Defaults are 100% and old projects retain their original playback. LIVE mix settings are separate.
 
 In LIVE:
 

@@ -2,9 +2,9 @@
 
 [**Download V4.2 — complete standalone**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.2_Standalone.zip)
 
-[**V4.2.1 dry SAMPLE playback update — for installed V4.2**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.2.1_Update.zip)
+[**V4.2.2 SAMPLE mixer control update — for V4.2 / V4.2.1**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.2.2_Update.zip)
 
-SAMPLE plays the original file at zero mixes or with GRANULAR disabled, without needing ROAM. Merge the small update with the app closed; media/settings and the V4.2 launcher are retained.
+START alone plays/pauses in the SAMPLE mixer; A remains unassigned there. Includes the dry-playback fix: zero mixes or disabled granular still play the original file without ROAM. Close the app and merge the update, retaining the V4.2 launcher, media and settings.
 
 [**Download personal-data importer**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.2_Import_Data.sh)
 

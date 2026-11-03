@@ -256,7 +256,8 @@ class RecordingUI:
                             key=SAMPLE_MIX_CONTROLS[self.sample_selection][1]
                             c.bus().set(key,c.bus().get(key)+(.05 if action=='RIGHT' else -.05))
                         return True
-                    if action in ('A','START'):
+                    if action=='A':return True
+                    if action=='START':
                         if value!=0:self.play_sample()
                         return True
                     if action=='B':
@@ -336,7 +337,7 @@ class RecordingUI:
                         action='Y STOP' if c.active() else 'Y START'
                         items=[('D-PAD MIX',gray),('X SAMPLE',accent),(action,accent),('A FREEZE',gray),('B STOP' if c.active() else 'B BACK',gray),('MENU SAVE',accent)] if c.active() and c.bus().get('live.freeze')>=.5 else [('D-PAD MIX',gray),('X SAMPLE',accent),(action,accent),('A FREEZE',gray),('B STOP' if c.active() else 'B BACK',gray),('L2/R2 INPUT',gray)]
                     else:
-                        action='A/START PAUSE' if c.bus().get('transport.playing')>=.5 else 'A/START PLAY'
+                        action='START PAUSE' if c.bus().get('transport.playing')>=.5 else 'START PLAY'
                         items=[('D-PAD MIX',gray),('X LIVE',accent),('Y RECORD',accent),('SELECT/B BACK',gray),(action,accent)]
                 elif main.record_mode=='recording':
                     monitor=c.record_monitor
