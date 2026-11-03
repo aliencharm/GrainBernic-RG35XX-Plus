@@ -69,6 +69,9 @@ class ProjectPlayback:
             if isinstance(values,dict):
                 values=sound_values(values)
                 values.pop('transport.playing',None)
+                from v4_shimmer import SHIMMER_DEFAULTS
+                for key,(default,_,__) in SHIMMER_DEFAULTS.items():
+                    if key in bus.params:values.setdefault(key,default)
                 for key in SAMPLE_MIX_KEYS:
                     if key in bus.params:values.setdefault(key,1.)
             bus.set('transport.playing',0)

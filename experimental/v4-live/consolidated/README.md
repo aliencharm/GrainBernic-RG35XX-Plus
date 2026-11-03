@@ -1,8 +1,31 @@
 # GrainBrick V4.2 — RG35XX Plus
 
-A complete standalone AntevasinBuild based on official **ETRNLIAM GrainBrick beta 1.0**. This V4.2 standalone consolidates the working V4.1.10 controls, SAMPLE/LIVE mixers, project fixes, themes and frozen-buffer saving. The current update revision is **4.2.2**; it corrects dry SAMPLE playback while retaining the V4.2 controls. No earlier installation or patch chain is required.
+A complete standalone AntevasinBuild based on official **ETRNLIAM GrainBrick beta 1.0**. This V4.2 standalone consolidates the working V4.1.10 controls, SAMPLE/LIVE mixers, project fixes, themes and frozen-buffer saving. The current update revision is **4.2.3**; it adds the optional Stardust shimmer and retains the V4.2 controls and dry-playback fixes. No earlier installation or patch chain is required.
 
 Target: **Anbernic RG35XX Plus / KNULLI Scarab 20260511**, with system Python 3.12, Pygame and ALSA tools. The required NumPy runtime is bundled.
+
+## V4.2.3 Stardust preview
+
+This is the first device-test build of Stardust, an independent native ARM shimmer. Close GrainBrick and merge `GrainBrick_V4.2.3_Stardust_Preview_Update.zip` into an installed V4.2 / V4.2.1 / V4.2.2 folder. Keep the V4.2 launcher, personal media and settings. No desktop VST is included or hosted.
+
+In FX, open **SHIMMER**. **TYPE** is in the upper header, with its hint below. Move up from the first control row to select TYPE, then use A/B for Original/Stardust. **MENU** switches the type directly while on this category. X retains Next FX; Y retains Fine adjustment. The selected type and both sets of parameters are saved with the project. Older projects default to Original.
+
+Original retains the native GrainBrick shimmer and its controls. Stardust provides:
+
+- **Pre Delay:** -1000 to +1000 ms. Positive delays the send to Stardust; negative delays its dry/base path.
+- **Size / Decay:** network size and relative tail length.
+- **Pitch:** -12 to +12 semitones, inside the recirculating shimmer path.
+- **Brightness:** damping of the circulating tail.
+- **Frequency / Depth:** delay modulation rate (0.05–5 Hz) and amount.
+- **Input / Send / Return:** base-path level, feed to Stardust and new wet-tail level. Input scales the existing FX output in this mode; Send feeds Stardust independently from the FX input.
+
+The existing REVERB category, native engine and parameters remain unchanged. Stardust adds its own feedback-delay network and pitch-shift loop in the shimmer slot. Only the selected shimmer algorithm processes audio; switching resets shimmer history and uses a brief transition fade. Original projects retain their original default path.
+
+Start a sample or LIVE input, set its **FX MIX above 0%**, choose Stardust and try Input 100%, Send 100%, Return 50%, Pitch +12 ST. Return 0% removes the Stardust tail; Send 0% lets the existing tail decay. Ordinary reverb remains available independently.
+
+The DSP is implemented in C; Python handles selection and controls. Host and ARM-emulated tests check stability and compatibility, but they do not establish handheld CPU headroom or subjective sound quality. On device, compare the DSP meter/overruns under your usual granular/tape workload. For a separate timing check, close the app, put the optional `GrainBrick_Stardust_Profile.sh` in ports and launch it. It writes `grainbrick-v4/Stardust_Profile.txt` with readable permissions and opens no audio device. The report measures Stardust alone, excluding the rest of GrainBrick.
+
+The provided Luminance manual, screenshot and preset values informed the control reference. Stardust is an independent implementation, not a bit-exact recreation. The uploaded VST and preset bank are not bundled.
 
 ## V4.2.2 SAMPLE mixer controls
 
@@ -97,3 +120,5 @@ Normal logs are `v4.log` and `audio_process.log` inside the app folder. The opti
 The original proprietary native app and DSP are unchanged. Preserve `CREDITS_V4.md`, the original `README_EN.md`, third-party notices/licenses and supplied compliance sources. This port does not relicense the original app.
 
 The final archive passes inventory, hashes, original-engine, executable launcher, factory media and license checks. Host tests cover the runtime and data import. ARM-emulated original-app checks cover LIVE controls, full frozen WAV export, paused project loading and original DSP processing. OS audio/process boundaries are mocked in UI checks; hardware timing still needs on-device confirmation. Detailed evidence and historical changes remain in the repository, outside the runtime package.
+
+To rebuild Stardust from source, run `python3 experimental/v4-live/stardust/build_native.py` with an ARM64 cross compiler (optional `--cc` / `--sysroot`), then use the normal package builder. Development source/tests/profile helpers stay outside the installed runtime.

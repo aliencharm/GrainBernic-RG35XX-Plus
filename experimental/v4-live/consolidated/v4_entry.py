@@ -23,7 +23,7 @@ def main():
         for path in locks:
             lock=stack.enter_context(path.open('a'))
             fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-        print('GRAINBRICK V4.2.2:',str(app),flush=True)
+        print('GRAINBRICK V4.2.3:',str(app),flush=True)
         prepare(app)
         config=device_config(app/'config.json')
         if 'V4_USB_NOT_CONNECTED' not in config['capture']:
@@ -52,6 +52,8 @@ def main():
             state['record_ui'].install()
             from v4_themes import Themes
             state['themes']=Themes(app,original,state['controller']).install()
+            from v4_shimmer import install as install_shimmer
+            install_shimmer(original)
             from v4_projects import ProjectPlayback
             state['projects']=ProjectPlayback(app,original,state['controller']).install()
         sys.addaudithook(install)

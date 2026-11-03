@@ -30,6 +30,9 @@ def verify(path):
             if name.startswith('grainbrick-v4/_vendor/'):
                 assert include_vendor(name.removeprefix('grainbrick-v4/_vendor/')),name
         assert [n for n in names if n.lower().endswith('.wav')]==['grainbrick-v4/samples/sample grainbrick 1.wav']
+        if 'grainbrick-v4/libgrainbrick_stardust.so' in files:
+            elf=archive.read('grainbrick-v4/libgrainbrick_stardust.so')
+            assert elf[:6]==b'\x7fELF\x02\x01' and int.from_bytes(elf[18:20],'little')==183,'Stardust is not ARM64'
         preset=json.loads(archive.read('grainbrick-v4/projects/AMBIENT.json'))
         assert 'grainbrick-v4/'+preset['sample']['path'] in files,'Factory project sample missing'
         for name in ('CREDITS_V4.md','README_V4.md','README_EN.md','THIRD_PARTY_NOTICES.md',

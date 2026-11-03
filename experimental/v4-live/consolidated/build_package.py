@@ -14,6 +14,9 @@ parser.add_argument('--output',type=Path,help='Standalone ZIP destination')
 parser.add_argument('--release-name',help='Display name in the release manifest')
 args=parser.parse_args()
 source=args.original.resolve()
+stardust=root.parent/'stardust/libgrainbrick_stardust.so'
+elf=stardust.read_bytes()
+assert elf[:6]==b'\x7fELF\x02\x01' and int.from_bytes(elf[18:20],'little')==183,'Stardust library must be ARM64; run stardust/build_native.py'
 assert hashlib.sha256((source/MAIN).read_bytes()).hexdigest()==EXPECTED_MAIN,'Unexpected original native application'
 baseline=json.loads((root/'audio-baseline.json').read_text())
 launcher_version='.'.join(VERSION.split('.')[:2])
@@ -23,6 +26,8 @@ files={f'GrainBrick V{launcher_version}.sh':root/'GrainBrick V4.sh',
        'grainbrick-v4/config.example.json':root/'config.example.json',
        'grainbrick-v4/v4_record_ui.py':root/'v4_record_ui.py',
        'grainbrick-v4/v4_projects.py':root/'v4_projects.py',
+       'grainbrick-v4/v4_shimmer.py':root/'v4_shimmer.py',
+       'grainbrick-v4/libgrainbrick_stardust.so':root.parent/'stardust/libgrainbrick_stardust.so',
        'grainbrick-v4/v4_waveform.py':root/'v4_waveform.py',
        'grainbrick-v4/v4_themes.py':root/'v4_themes.py',
        'grainbrick-v4/audio_inventory.py':root.parent/'routing/audio_inventory.py',
@@ -54,7 +59,7 @@ manifest={'version':VERSION,'kind':'standalone','original_main_sha256':EXPECTED_
           'release_name':args.release_name or f'GrainBrick V{VERSION}','consolidates':'V4.1.10',
           'packaging':'Runtime only; NumPy tests, compiler tools, headers and typing stubs omitted',
           'audio_baseline':baseline,'sha256':{name:hashlib.sha256(path.read_bytes()).hexdigest() for name,path in files.items()}}
-manifest['audio_overrides']={'stage_mix.py':'Separate sample FX/Tape blends default to original 100%; LIVE blends unchanged','live_source.py':'Straight-file SAMPLE dry playback and disabled-granular bypass; frozen LIVE export and native wet engine retained','record_monitor.py':'Output-only 10 ms monitor startup fade; saved recordings unchanged'}
+manifest['audio_overrides']={'stage_mix.py':'Separate sample FX/Tape blends default to original 100%; LIVE blends unchanged','live_source.py':'Straight-file SAMPLE dry playback and disabled-granular bypass; frozen LIVE export and native wet engine retained','record_monitor.py':'Output-only 10 ms monitor startup fade; saved recordings unchanged','v4_shimmer.py':'Optional Original/Stardust shimmer selection; native reverb retained','libgrainbrick_stardust.so':'Independent C stereo feedback-network pitch-shifting shimmer'}
 manifest['immutable_paths']=[name for name in files if name.startswith('grainbrick-v4/') and not name.startswith(('grainbrick-v4/samples/','grainbrick-v4/projects/'))]
 release=args.output or root.parent/f'releases/GrainBrick_V{VERSION}_Standalone.zip'
 release.parent.mkdir(parents=True,exist_ok=True)

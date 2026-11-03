@@ -16,7 +16,8 @@ LIVE_DEFAULTS={'live.enabled':(0.,0.,1.),'live.mix':(0.,0.,1.),'live.freeze':(0.
                'sample.granular_mix':(1.,0.,1.),'sample.fx_mix':(1.,0.,1.),'sample.tape_mix':(1.,0.,1.)}
 
 def add_live_parameters(bus):
-    for key,(value,lo,hi) in LIVE_DEFAULTS.items():
+    from v4_shimmer import SHIMMER_DEFAULTS
+    for key,(value,lo,hi) in {**LIVE_DEFAULTS,**SHIMMER_DEFAULTS}.items():
         if key not in bus.params:bus.add(key,value,lo,hi)
     return bus
 
