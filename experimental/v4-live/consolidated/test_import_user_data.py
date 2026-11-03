@@ -13,7 +13,7 @@ class ImportTests(unittest.TestCase):
         old.mkdir();new.mkdir()
         (new/'projects').mkdir();(new/'projects/AMBIENT.json').write_text('{"factory":true}')
         original=hashlib.sha256((new/'projects/AMBIENT.json').read_bytes()).hexdigest()
-        (new/'RELEASE.json').write_text(json.dumps(dict(kind='standalone',version='4.1.10',sha256={'grainbrick-v4/projects/AMBIENT.json':original})))
+        (new/'RELEASE.json').write_text(json.dumps(dict(kind='standalone',version='4.2',sha256={'grainbrick-v4/projects/AMBIENT.json':original})))
         for name,content in {'samples/custom.wav':b'sample','samples/recordings/held.wav':b'freeze','recordings/dry.wav':b'rec','projects/AMBIENT.json':b'{"personal":true}', 'projects/mine.json':b'{}','config.json':b'{"ui_theme":"SPRUCE"}','sound_state.json':b'{}','v4.log':b'old log','old_runtime.py':b'old code','GrainBrick_USB_Report.txt':b'old report'}.items():
             path=old/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(content)
         return root,old,new

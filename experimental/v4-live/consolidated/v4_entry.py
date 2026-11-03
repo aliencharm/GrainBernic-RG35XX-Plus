@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Standalone GrainBrick V4.1 launcher; tested V4 audio and UI integration."""
+"""Standalone GrainBrick V4.2 launcher; tested V4 audio and UI integration."""
 from contextlib import ExitStack
 import fcntl
 import os
@@ -23,7 +23,7 @@ def main():
         for path in locks:
             lock=stack.enter_context(path.open('a'))
             fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-        print('GRAINBRICK V4.1.10:',str(app),flush=True)
+        print('GRAINBRICK V4.2:',str(app),flush=True)
         prepare(app)
         config=device_config(app/'config.json')
         if 'V4_USB_NOT_CONNECTED' not in config['capture']:

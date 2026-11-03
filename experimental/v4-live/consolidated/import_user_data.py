@@ -19,8 +19,8 @@ def import_data(ports):
     if old.is_symlink() or new.is_symlink():raise RuntimeError('App folders must be real directories')
     if not old.is_dir() or not new.is_dir():raise RuntimeError('Need grainbrick-v4-backup and the new grainbrick-v4 beside this script')
     release=json.loads((new/'RELEASE.json').read_text())
-    if release.get('kind')!='standalone' or release.get('version','').split('.')[:2]!=['4','1']:
-        raise RuntimeError('Destination must be a complete GrainBrick V4.1 installation')
+    if release.get('kind')!='standalone' or release.get('version','').split('.')[:2] not in (['4','1'],['4','2']):
+        raise RuntimeError('Destination must be a complete GrainBrick V4.1 or V4.2 installation')
     with ExitStack() as locks:
         for folder in (old,new):
             handle=locks.enter_context((folder/'.lock').open('a'))

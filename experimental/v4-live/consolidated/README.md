@@ -1,32 +1,32 @@
-# GrainBrick V4.1 Final — RG35XX Plus
+# GrainBrick V4.2 — RG35XX Plus
 
-A complete standalone AntevasinBuild based on official **ETRNLIAM GrainBrick beta 1.0**. This final package consolidates the current V4.1.10 controls, SAMPLE/LIVE mixers, project fixes, themes and frozen-buffer saving. Its internal revision stays **4.1.10** so it can be identified accurately. No earlier installation or patch chain is required.
+A complete standalone AntevasinBuild based on official **ETRNLIAM GrainBrick beta 1.0**. This V4.2 standalone consolidates the working V4.1.10 controls, SAMPLE/LIVE mixers, project fixes, themes and frozen-buffer saving. The internal version is **4.2**; audio and control behavior are retained from the working V4.1.10 build. No earlier installation or patch chain is required.
 
 Target: **Anbernic RG35XX Plus / KNULLI Scarab 20260511**, with system Python 3.12, Pygame and ALSA tools. The required NumPy runtime is bundled.
 
 ## Clean installation
 
-Close GrainBrick before changing files. Extract `GrainBrick_V4.1_Final_Standalone.zip` into `/userdata/roms/ports/`. It provides exactly:
+Close GrainBrick before changing files. Extract `GrainBrick_V4.2_Standalone.zip` into `/userdata/roms/ports/`. It provides exactly:
 
 ```
 ports/
-  GrainBrick V4.1.sh
+  GrainBrick V4.2.sh
   grainbrick-v4/
 ```
 
-Connect the USB interface before launching **GrainBrick V4.1**. First launch verifies the runtime and creates configuration. Existing KNULLI controller mappings are used; otherwise calibration runs. Original Amber is the default theme.
+Connect the USB interface before launching **GrainBrick V4.2**. First launch verifies the runtime and creates configuration. Existing KNULLI controller mappings are used; otherwise calibration runs. Original Amber is the default theme.
 
 The archive contains runtime modules, unchanged native application/DSP libraries, required resources, a pruned NumPy runtime, one factory demo and AMBIENT project, documentation and required legal materials. It excludes development/test files, caches, compiler tools, old updates, logs, diagnostic reports, user configuration and personal media. Normal logs and preferences are created when the app runs.
 
 ## Bring your development data into the final build
 
-The separate `GrainBrick_Import_Data.sh` tool imports existing personal data on the handheld. Keep a backup until you have confirmed the import.
+The separate `GrainBrick_V4.2_Import_Data.sh` tool imports existing personal data on the handheld. Keep a backup until you have confirmed the import.
 
-1. Close GrainBrick. Rename the current `ports/grainbrick-v4` folder to **`ports/grainbrick-v4-backup`**. Keep that folder intact.
-2. Extract the final standalone ZIP into `ports/`, creating the new `grainbrick-v4`. Retain the existing V4.1 launcher or replace it with the identical supplied launcher.
-3. Put **GrainBrick_Import_Data.sh** directly in `ports/`, refresh PORTS and launch it once before using the new app.
+1. Close GrainBrick. Rename the current `ports/grainbrick-v4` folder to **`ports/grainbrick-v4-backup`**. Keep that folder intact. If a backup with that name already exists, preserve it elsewhere before renaming the current working app folder.
+2. Extract the final standalone ZIP into `ports/`, creating the new `grainbrick-v4`. Use the supplied GrainBrick V4.2 launcher. Move the old GrainBrick V4.1.sh launcher off ports to avoid duplicate entries. The app folder remains grainbrick-v4 for data-path compatibility.
+3. Put **GrainBrick_V4.2_Import_Data.sh** directly in `ports/`, refresh PORTS and launch it once before using the new app.
 4. It copies `samples/` (including `samples/recordings/`), `recordings/`, `projects/`, and existing `config.json`, `settings.json`, `sound_state.json`, `gb_buttons.json` and `button_mapping.json` into the new installation. Your previous theme, routes and controls are retained. Old runtime files, root logs, diagnostic reports and generated ALSA/lock/setup files are not imported.
-5. Check `grainbrick-v4/Import_Report.txt` for **IMPORT COMPLETE**, then launch GrainBrick V4.1 and check your projects and recordings. The importer preserves the backup and refuses to overwrite conflicting new personal media. Re-running after a completed import leaves files unchanged.
+5. Check `grainbrick-v4/Import_Report.txt` for **IMPORT COMPLETE**, then launch GrainBrick V4.2 and check your projects and recordings. The importer preserves the backup and refuses to overwrite conflicting new personal media. Re-running after a completed import leaves files unchanged.
 6. After verifying everything, move the backup and the optional import/USB-check scripts off the handheld if you want a clean PORTS folder.
 
 For manual import, copy the same data folders and JSON files from the backup with the app closed. Copy entire directory trees so nested media paths remain available. A project references a sample; it does not embed its audio or a temporary LIVE buffer. Existing project loading resolves unambiguous legacy media paths and reports genuinely missing files. Projects load paused, and saved transient LIVE flags are ignored.

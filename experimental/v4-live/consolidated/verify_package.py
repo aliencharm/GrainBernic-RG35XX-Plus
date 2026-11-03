@@ -1,4 +1,4 @@
-"""Verify a clean V4.1 deliverable independently of an extracted installation."""
+"""Verify a clean V4 standalone deliverable independently of an extracted installation."""
 import hashlib
 import json
 from pathlib import Path,PurePosixPath
@@ -12,15 +12,16 @@ def verify(path):
         names=archive.namelist();files={n for n in names if not n.endswith('/')}
         assert len(names)==len(set(names)),'Duplicate archive members'
         assert archive.testzip() is None,'ZIP integrity failure'
-        assert {n.split('/')[0] for n in names}=={'GrainBrick V4.1.sh','grainbrick-v4'},'Unexpected top-level files'
         manifest=json.loads(archive.read('grainbrick-v4/RELEASE.json'))
-        assert manifest['version'].split('.')[:2]==['4','1'] and manifest['kind']=='standalone'
+        assert manifest['version'].split('.')[:2] in (['4','1'],['4','2']) and manifest['kind']=='standalone'
+        launcher='GrainBrick V'+'.'.join(manifest['version'].split('.')[:2])+'.sh'
+        assert {n.split('/')[0] for n in names}=={launcher,'grainbrick-v4'},'Unexpected top-level files'
         assert files==set(manifest['sha256'])|{'grainbrick-v4/RELEASE.json'},'Untracked or missing files'
         for name,digest in manifest['sha256'].items():
             assert not PurePosixPath(name).is_absolute() and '..' not in PurePosixPath(name).parts
             assert hashlib.sha256(archive.read(name)).hexdigest()==digest,name
         assert hashlib.sha256(archive.read('grainbrick-v4/'+MAIN)).hexdigest()==EXPECTED_MAIN
-        assert archive.getinfo('GrainBrick V4.1.sh').external_attr>>16&0o111,'Launcher is not executable'
+        assert archive.getinfo(launcher).external_attr>>16&0o111,'Launcher is not executable'
         for name in files:
             relative=PurePosixPath(name)
             assert not {'__pycache__','tests'}&set(relative.parts),name

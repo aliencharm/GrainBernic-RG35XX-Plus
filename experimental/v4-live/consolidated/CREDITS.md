@@ -1,4 +1,4 @@
-# GrainBrick V4.1 — credits and notices
+# GrainBrick V4.2 — credits and notices
 
 Original application: **GrainBrick beta 1.0**, by **ETRNLIAM**, originally for TrimUI Brick / KNULLI.
 https://github.com/ETRNLIAM/GrainBrick

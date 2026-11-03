@@ -1,25 +1,25 @@
-# GrainBrick V4.1 Final — RG35XX Plus
+# GrainBrick V4.2 — RG35XX Plus
 
-[**Download V4.1 Final — complete standalone**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.1_Final_Standalone.zip)
+[**Download V4.2 — complete standalone**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.2_Standalone.zip)
 
-[**Download personal-data importer**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_Import_Data.sh)
+[**Download personal-data importer**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.2_Import_Data.sh)
 
-The final standalone consolidates the current **V4.1.10** runtime: separate SAMPLE/LIVE mixers, original recording/editor, full 16-second frozen input WAV saving on MENU, corrected LIVE transport/Freeze/stop controls, project loading fixes, sample deletion, folder navigation, stereo USB routing, continuous waveforms and six themes. Original native app/DSP and Amber remain unchanged.
+The V4.2 standalone consolidates the working **V4.1.10** runtime: separate SAMPLE/LIVE mixers, original recording/editor, full 16-second frozen input WAV saving on MENU, corrected LIVE transport/Freeze/stop controls, project loading fixes, sample deletion, folder navigation, stereo USB routing, continuous waveforms and six themes. Original native app/DSP and Amber remain unchanged.
 
-The clean ZIP contains **GrainBrick V4.1.sh** and **grainbrick-v4/**. No earlier build or patch chain is required. Development files, old updates, logs, caches, diagnostic reports and personal media are excluded; required licenses and compliance sources remain.
+The clean ZIP contains **GrainBrick V4.2.sh** and **grainbrick-v4/**. No earlier build or patch chain is required. Development files, old updates, logs, caches, diagnostic reports and personal media are excluded; required licenses and compliance sources remain.
 
 To keep the projects, recordings, samples and settings used during development:
 
 1. Close the app and rename the current `ports/grainbrick-v4` to `ports/grainbrick-v4-backup`.
-2. Extract the final standalone into `ports/` to create the new app folder.
-3. Put `GrainBrick_Import_Data.sh` in `ports/`, refresh PORTS and launch it once.
-4. Check `grainbrick-v4/Import_Report.txt` for **IMPORT COMPLETE**, then launch **GrainBrick V4.1**. The original backup stays intact. Keep it until your media/projects/settings are confirmed.
+2. Extract the V4.2 standalone into `ports/` to create the new app folder. Move the old V4.1 launcher off PORTS to avoid duplicate entries.
+3. Put `GrainBrick_V4.2_Import_Data.sh` in `ports/`, refresh PORTS and launch it once.
+4. Check `grainbrick-v4/Import_Report.txt` for **IMPORT COMPLETE**, then launch **GrainBrick V4.2**. The original backup stays intact. Keep it until your media/projects/settings are confirmed.
 
 The importer copies only personal data and preference files. Conflicting new personal media blocks import rather than being overwritten. After confirmation, move the backup and optional diagnostic/import scripts off the handheld for a clean PORTS folder.
 
-Target: **RG35XX Plus / KNULLI Scarab 20260511**, using system Python 3.12, Pygame and ALSA. A pruned NumPy runtime, factory demo/preset, original native libraries, assets and legal notices are bundled. The internal version remains 4.1.10; Final is the consolidated packaging label.
+Target: **RG35XX Plus / KNULLI Scarab 20260511**, using system Python 3.12, Pygame and ALSA. A pruned NumPy runtime, factory demo/preset, original native libraries, assets and legal notices are bundled. Internal version, launcher and manifest identify this build as V4.2. The original V4.1 standalone remains a separate historical release.
 
-[Installation and controls](experimental/v4-live/consolidated/README.md) · [Final validation](experimental/v4-live/consolidated/VALIDATION-4.1-FINAL.md) · [Credits](experimental/v4-live/consolidated/CREDITS.md)
+[Installation and controls](experimental/v4-live/consolidated/README.md) · [Final validation](experimental/v4-live/consolidated/VALIDATION-4.2.md) · [Credits](experimental/v4-live/consolidated/CREDITS.md)
 
 The AUDIO4c saved-REC startup click remains unresolved; the user reported Tascam free of that click. Direct Tascam connection is the confirmed working setup; the tested charging/data dongle did not appear in the handheld's USB/ALSA inventory. The final package is verified on the host and under ARM emulation; hardware timing still needs device confirmation.
 
