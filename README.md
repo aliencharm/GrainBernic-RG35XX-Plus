@@ -2,9 +2,9 @@
 
 [**Download V4.2 — complete standalone**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.2_Standalone.zip)
 
-[**Stardust Preview — cumulative update for V4.2 / V4.2.1 / V4.2.2**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.2.3_Stardust_Preview_Update.zip)
+[**Stardust Preview — cumulative update for V4.2 / V4.2.1 / V4.2.2 / V4.2.3**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.2.4_Stardust_Preview_Update.zip)
 
-SHIMMER now offers **Original / Stardust**, with TYPE in its header and MENU as a quick switch. X remains Next FX and Y remains Fine. Stardust has native feedback reverb/pitch shifting and ten controls; the existing REVERB is unchanged. This preview needs on-device sound/CPU confirmation. [Timing probe](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_Stardust_Profile.sh) · [Controls and install notes](experimental/v4-live/consolidated/README.md#v423-stardust-preview).
+SHIMMER now offers **Original / Stardust**, with TYPE in its header and MENU as a quick switch. L2/R2 select previous/next FX; Y retains Fine/Coarse. Stardust has native feedback reverb/pitch shifting and ten controls; the existing REVERB is unchanged. This preview needs on-device sound/CPU confirmation. [Timing probe](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_Stardust_Profile.sh) · [Controls and install notes](experimental/v4-live/consolidated/README.md#v424-stardust-preview).
 
 [**V4.2.2 SAMPLE mixer control update — for V4.2 / V4.2.1**](https://github.com/aliencharm/GrainBernic-RG35XX-Plus/raw/refs/heads/v4-experimental/experimental/v4-live/releases/GrainBrick_V4.2.2_Update.zip)
 

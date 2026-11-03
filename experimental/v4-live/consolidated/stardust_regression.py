@@ -79,11 +79,26 @@ class StardustChecks:
             events=pygame.event.get()
             assert not any(e.type in (pygame.JOYBUTTONDOWN,pygame.JOYBUTTONUP) and e.button==14 for e in events)
             assert main.params.get('shimmer.type')==expected
-        for logical in (6,7):
+        def press(logical):
             physical=next(int(k) for k,v in mapping.items() if v==logical)
             pygame.event.post(pygame.event.Event(pygame.JOYBUTTONDOWN,button=physical,joy=0))
-            assert any(e.type==pygame.JOYBUTTONDOWN and e.button==logical for e in pygame.event.get())
-        print('PASS MENU type shortcut and unmodified X/Y events in SHIMMER',flush=True)
+            pygame.event.post(pygame.event.Event(pygame.JOYBUTTONUP,button=physical,joy=0))
+            return pygame.event.get()
+        for index in range(len(main.controls.FX_PAGES)):
+            main.controls.fx_page_index=index
+            for logical,direction in ((11,1),(10,-1)):
+                before=main.controls.fx_page_index
+                assert not any(e.type in (pygame.JOYBUTTONDOWN,pygame.JOYBUTTONUP) and e.button==logical for e in press(logical))
+                assert main.controls.fx_page_index==(before+direction)%len(main.controls.FX_PAGES)
+            before=main.controls.fx_page_index
+            assert not any(e.type in (pygame.JOYBUTTONDOWN,pygame.JOYBUTTONUP) and e.button==7 for e in press(7))
+            assert main.controls.fx_page_index==before
+            assert any(e.type==pygame.JOYBUTTONDOWN and e.button==6 for e in press(6))
+        main.controls.tab_index=main.controls.TABS.index('GRAIN')
+        for logical in (7,10,11):
+            assert any(e.type==pygame.JOYBUTTONDOWN and e.button==logical for e in press(logical))
+        main.controls.tab_index=main.controls.TABS.index('FX');main.controls.fx_page_index=self.index
+        print('PASS MENU type, mapped L2/R2 previous/next with wrap, X inactive in FX, Y unchanged and other tabs untouched',flush=True)
         print('PASS Original/Stardust SHIMMER selector, parameters, project round trip and old-project default, ARM shimmer tail and unchanged native reverb instance/parameters',flush=True)
     def frame(self,main,state):
         if state['frames']==2:assert main.params.get('shimmer.type')==1

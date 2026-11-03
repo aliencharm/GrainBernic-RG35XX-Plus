@@ -143,6 +143,8 @@ def install(main):
     renderer.format_value=format_value
     original_text=renderer.text
     def text(ui,value,*args,**kwargs):
+        if getattr(main,'controls',None) is not None and main.controls.current_tab=='FX' and isinstance(value,str):
+            value=value.replace('X NEXT FX','L2/R2 FX').replace('X: NEXT FX','L2/R2: FX')
         if value=='SHIMMER.TYPE':value='TYPE'
         elif value=='NO DESCRIPTION AVAILABLE.' and getattr(main,'controls',None) is not None and main.controls.current_tab=='FX' and main.controls.current_param=='shimmer.type':
             value='SELECT ORIGINAL OR STARDUST SHIMMER.'
@@ -201,9 +203,14 @@ def install(main):
         out=[]
         for event in original_events(*args,**kwargs):
             control=getattr(main,'controls',None)
-            here=control is not None and control.current_tab=='FX' and control.current_fx_name=='SHIMMER'
+            in_fx=control is not None and control.current_tab=='FX'
+            here=in_fx and control.current_fx_name=='SHIMMER'
             if event.type==pygame.JOYBUTTONUP and getattr(event,'button',None) in captured:
                 captured.discard(event.button)
+            elif in_fx and event.type==pygame.JOYBUTTONDOWN and event.button in (7,10,11):
+                captured.add(event.button)
+                if event.button in (10,11):
+                    control.fx_page_index=(control.fx_page_index+(-1 if event.button==10 else 1))%len(control.FX_PAGES)
             elif here and event.type==pygame.JOYBUTTONDOWN and event.button==14:
                 captured.add(event.button)
                 value=control.parameters.get('shimmer.type')
@@ -216,6 +223,8 @@ def install(main):
     def bar(ui,items,*args,**kwargs):
         control=getattr(main,'controls',None)
         if control is not None and control.current_tab=='FX' and control.current_fx_name=='SHIMMER' and not getattr(ui,'info_mode',False):
-            items=[('D-PAD',ui.WHITE),('B - / A +',ui.WHITE),('Y FINE',ui.WHITE),('MENU TYPE',ui.ACCENT),('X NEXT FX',ui.WHITE)]
+            items=[('D-PAD',ui.WHITE),('B - / A +',ui.WHITE),('Y FINE',ui.WHITE),('MENU TYPE',ui.ACCENT),('L2/R2 FX',ui.WHITE)]
+        elif control is not None and control.current_tab=='FX':
+            items=[('L2/R2 FX' if 'X' in label and ('FX' in label or 'EFFECT' in label) else label,color) for label,color in items]
         return original_bar(ui,items,*args,**kwargs)
     renderer.draw_bar_items=bar

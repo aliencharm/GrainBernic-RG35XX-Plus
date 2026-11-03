@@ -53,14 +53,15 @@ void stardust_destroy(void*handle){Stardust*s=handle;if(s){free(s->fdn);free(s->
 int stardust_process(void*handle,const float*feed,float*audio,int frames,const float*p){
  Stardust*s=handle;if(!s||!feed||!audio||!p||frames<0)return -1;
  for(int i=0;i<10;i++)if(!isfinite(p[i]))return -2;
- float room=.4f+1.5f*clamp(p[1],0,1),rt=.4f+19.6f*powf(clamp(p[2],0,1),2);
+ /* Wider room/decay ranges; a smaller lossy pitch projection preserves the late tail. */
+ float room=.2f+2.1f*clamp(p[1],0,1),rt=.25f+39.75f*powf(clamp(p[2],0,1),1.4f);
  float target_delay[8],target_gain[8],target_norm[8];
  for(int j=0;j<8;j++){target_delay[j]=times[j]*s->sr*room;target_gain[j]=powf(.001f,times[j]*room/rt);target_norm[j]=sqrtf(fmaxf(0,1-target_gain[j]*target_gain[j]));}
  float ratio=powf(2.f,clamp(p[3],-24,24)/12.f);
- float fc=350.f*powf(50.f,clamp(p[4],0,1));fc=fminf(fc,.43f*s->sr);
+ float fc=120.f*powf(150.f,clamp(p[4],0,1));fc=fminf(fc,.43f*s->sr);
  float bright=1.f-expf(-2*PI*fc/s->sr),alpha=1.f-expf(-1.f/(.02f*s->sr));
  float aa=1.f-expf(-2*PI*fminf(fc,.4f*s->sr/fmaxf(1,ratio))/s->sr);
- float freq=clamp(p[5],.05f,5.f),depth=clamp(p[6],0,1)*.0015f*s->sr;
+ float freq=clamp(p[5],.05f,5.f),depth=clamp(p[6],0,1)*.003f*s->sr;
  float predelay=clamp(p[0],-1000,1000)*.001f*s->sr;
  float input=clamp(p[7],0,1),send=clamp(p[8],0,1),ret=clamp(p[9],0,1);
  if(!s->ready){
@@ -105,7 +106,7 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
    float shifted=(pitched[0]*sl[j]+pitched[1]*srn[j])*.35355339f;
    float injected=(in[0]*sl[j]+in[1]*srn[j])*.35355339f*s->norm[j];
    float projection=(wet[0]*sl[j]+wet[1]*srn[j])*.35355339f;
-   float v=injected+s->gain[j]*(base+.45f*(shifted-projection));
+   float v=injected+s->gain[j]*(base+.16f*(shifted-projection));
    s->fdn[j*s->fdn_cap+s->wi]=clean(v);
   }
   for(int c=0;c<2;c++){

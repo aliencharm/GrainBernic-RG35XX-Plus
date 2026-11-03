@@ -56,6 +56,28 @@ class StardustTests(unittest.TestCase):
         for shift in (-24,24):
             out=self.render(seconds=12,**{'stardust.input':0,'stardust.size':1,'stardust.decay':1,'stardust.depth':1,'stardust.frequency':5,'stardust.pitch':shift,'stardust.return':1})
             self.assertTrue(np.isfinite(out).all());self.assertLess(float(np.max(np.abs(out))),4)
+    def test_expansive_pitch_tail_and_size_response(self):
+        # Broadband burst: late pitched tail must persist, then decay without self-oscillation.
+        for pitch in (-12,12):
+            e=StardustDSP(48000,self.library);self.addCleanup(e.close)
+            p=Params(**{'stardust.input':0,'stardust.predelay':0,'stardust.size':1,'stardust.decay':1,'stardust.pitch':pitch,'stardust.return':1,'stardust.depth':0})
+            feed=np.zeros((48000*24,2),np.float32)
+            feed[:24000]=np.random.default_rng(3).normal(0,.12,(24000,2))
+            out=np.empty_like(feed)
+            for start in range(0,len(feed),512):
+                block=feed[start:start+512];out[start:start+len(block)]=e.process(block,block.copy(),p)
+            early=float(np.mean(out[24000:48000]**2))
+            late=float(np.mean(out[48000*8:48000*9]**2))
+            end=float(np.mean(out[-48000:]**2))
+            self.assertTrue(np.isfinite(out).all())
+            self.assertGreater(late,early*1e-5)
+            self.assertLess(end,late*.01)
+            self.assertLess(float(np.max(np.abs(out))),.5)
+        small=self.render(seconds=.5,**{'stardust.input':0,'stardust.predelay':0,'stardust.size':0,'stardust.depth':0})
+        large=self.render(seconds=.5,**{'stardust.input':0,'stardust.predelay':0,'stardust.size':1,'stardust.depth':0})
+        onset=lambda x:int(np.flatnonzero(np.max(np.abs(x),axis=1)>1e-7)[0])
+        self.assertGreater(onset(large),onset(small)*8)
+
     def test_clear_and_frame_sizes(self):
         e=StardustDSP(48000,self.library);self.addCleanup(e.close)
         for n in (1,7,17,127,512,1024):
