@@ -48,14 +48,26 @@ class MixerChecks:
             bus.set('sample.granular_mix',1)
             np.testing.assert_array_equal(source.render(512),seen['wet'])
             assert source.sample_dry is None
-            for mix in (0.,.5,1.):
-                bus.set('sample.granular_mix',mix);source.render(512)
-                result=source.render(512)
-                expected=seen['dry']+(seen['wet']-seen['dry'])*mix
-                np.testing.assert_allclose(result,expected,rtol=1e-6,atol=1e-7)
+            original_flags={k:bus.get(k) for k in ('grain.enabled','roam.enabled','motion.enabled')}
+            for enabled in (1.,0.):
+                bus.set('grain.enabled',enabled)
+                for roam,motion in ((0.,0.),(1.,0.),(0.,1.),(1.,1.)):
+                    bus.set('roam.enabled',roam);bus.set('motion.enabled',motion)
+                    for mix in (0.,.01,.25,.5,.75,.99,1.,.75,.5,.25,0.):
+                        bus.set('sample.granular_mix',mix)
+                        target=mix if enabled else 0.
+                        current=source._sample_mix
+                        result=source.render(512)
+                        weights=np.linspace(current,target,512,dtype=np.float32)[:,None]
+                        expected=seen['dry']+(seen['wet']-seen['dry'])*weights
+                        np.testing.assert_allclose(result,expected,rtol=1e-6,atol=1e-7)
+                        result=source.render(512)
+                        expected=seen['dry']+(seen['wet']-seen['dry'])*target
+                        np.testing.assert_allclose(result,expected,rtol=1e-6,atol=1e-7)
+            for key,value in original_flags.items():bus.set(key,value)
         finally:
             engine_cls.render=original_render;SampleFilePlayer.render=original_dry
-        print('PASS native granular + straight-file SAMPLE dry/half/full blend and default passthrough',flush=True)
+        print('PASS native GRANULAR MIX sweep 0/1/25/50/75/99/100 percent, grain ON/OFF, ROAM/MOTION combinations, ramps and exact wet passthrough',flush=True)
         class Observe:
             def __init__(self,engine):self.engine=engine
             def process(self,audio,p,*a,**kw):

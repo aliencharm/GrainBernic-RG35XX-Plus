@@ -45,6 +45,23 @@ class SampleMixerTests(unittest.TestCase):
         self.assertAlmostEqual(float(result[0,0]),.2,places=6)
         self.assertAlmostEqual(float(result[-1,0]),.6,places=6)
         self.assertEqual(bus.get('live.mix'),0)
+    def test_granular_mix_sweep_with_grain_on_off_and_roam_motion_states(self):
+        for enabled in (0.,1.):
+            for roam,motion in ((0.,0.),(1.,0.),(0.,1.),(1.,1.)):
+                bus,engine,source=self.source()
+                bus.set('grain.enabled',enabled);bus.set('roam.enabled',roam);bus.set('motion.enabled',motion)
+                for mix in (0.,.01,.25,.5,.75,.99,1.,.75,.5,.25,0.):
+                    bus.set('sample.granular_mix',mix)
+                    source.render(512) # First block ramps from the previous setting.
+                    expected=.2+(.6-.2)*mix if enabled else .2
+                    np.testing.assert_allclose(source.render(512),expected,atol=1e-7)
+    def test_granular_mix_ramps_in_both_directions(self):
+        bus,engine,source=self.source()
+        bus.set('sample.granular_mix',1);source.render(512)
+        bus.set('sample.granular_mix',0)
+        result=source.render(512)
+        np.testing.assert_allclose(result[:,0],np.linspace(.6,.2,512),atol=1e-7)
+        self.assertTrue(np.all(np.diff(result[:,0])<=1e-7))
     def test_straight_file_dry_loops_and_pauses_without_roam(self):
         bus,engine,source=self.source();engine.sample.data=np.repeat(np.array([.1,.2,.3,.4],np.float32)[:,None],2,axis=1)
         bus.set('sample.granular_mix',0);bus.set('roam.enabled',0)
