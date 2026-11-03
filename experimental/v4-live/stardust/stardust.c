@@ -98,7 +98,10 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
    s->pitch_lp[c][0]=clean(s->pitch_lp[c][0]+s->aa*(wet[c]-s->pitch_lp[c][0]));
    s->pitch_lp[c][1]=clean(s->pitch_lp[c][1]+s->aa*(s->pitch_lp[c][0]-s->pitch_lp[c][1]));
    pitch_input[c]=s->pitch_lp[c][1];
-   float modulation=.035f*(s->depth/(.006f*s->sr))*sine(s,s->modphase+c*.31f);
+   /* Ambient drift, not foreground vibrato: about +/-8 cents at full Depth,
+      with a quadratic response for fine control of the lower half. */
+   float amount=s->depth/(.006f*s->sr);
+   float modulation=.0046f*amount*amount*sine(s,s->modphase+c*.31f);
    pitch_ratio[c]=s->ratio*(1+(c? .0015f:-.0015f)*shift+modulation);
   }
   cloud_tick(&s->cloud,pitch_input,pitched,pitch_ratio);
@@ -110,7 +113,7 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
    float shifted=(pitched[0]*sl[j]+pitched[1]*srn[j])*.35355339f;
    float injected=(in[0]*sl[j]+in[1]*srn[j])*.35355339f*s->norm[j];
    float projection=(wet[0]*sl[j]+wet[1]*srn[j])*.35355339f;
-   float v=injected+s->gain[j]*(base+.32f*(shifted-projection));
+   float v=injected+s->gain[j]*(base+.44f*(shifted-projection));
    s->fdn[j*s->fdn_cap+s->wi]=clean(v);
   }
   for(int c=0;c<2;c++){

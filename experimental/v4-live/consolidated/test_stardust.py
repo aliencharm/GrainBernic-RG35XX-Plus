@@ -126,11 +126,12 @@ class StardustTests(unittest.TestCase):
                 self.assertGreater(float(min(channel_energy)/max(channel_energy)),.25)
             spec=np.sum(np.abs(np.fft.rfft(out[48000:144000]*np.hanning(96000)[:,None],axis=0))**2,axis=1)
             frequencies=np.fft.rfftfreq(96000,1/48000)
-            region=(frequencies>300)&(frequencies<600)
-            sides=region&(abs(frequencies-440)>12)
+            region=(frequencies>420)&(frequencies<460)
+            sides=region&(abs(frequencies-440)>3)
             spectra[depth,frequency]=float(np.sum(spec[sides])/np.sum(spec[region]))
-        self.assertGreater(spectra[1,5],spectra[1,.05]+.15)
-        self.assertGreater(spectra[1,5],spectra[0,.5]+.15)
+        self.assertGreater(spectra[1,5],spectra[1,.05]+.01)
+        self.assertGreater(spectra[1,5],spectra[0,.5]+.01)
+        self.assertLess(spectra[1,5],.25)
 
     def test_no_fixed_pitch_head_pulse_with_modulation_disabled(self):
         # 125 Hz was an especially strong cancellation/pulse case for the old 120 ms heads.
@@ -188,6 +189,32 @@ class StardustTests(unittest.TestCase):
         spec=np.abs(np.fft.rfft((normalized-normalized.mean(axis=0))*np.hanning(len(env))[:,None],axis=0))
         frequencies=np.fft.rfftfreq(len(env),.005);band=(frequencies>=5)&(frequencies<=30)
         self.assertLess(float(np.max(spec[band])/(len(env)/4)),.12)
+
+    def test_depth_gives_background_drift_and_fine_lower_range(self):
+        excursions={}
+        for depth in (0.,.2,.5,1.):
+            e=StardustDSP(48000,self.library);self.addCleanup(e.close)
+            p=Params(**{'stardust.input':0,'stardust.predelay':0,'stardust.return':1,'stardust.pitch':12,'stardust.depth':depth,'stardust.frequency':.5,'stardust.size':.5,'stardust.decay':.8})
+            signal=np.repeat((.2*np.sin(np.arange(48000*14)*2*np.pi*220/48000)).astype(np.float32)[:,None],2,axis=1)
+            out=np.empty_like(signal)
+            for start in range(0,len(signal),512):
+                block=signal[start:start+512];out[start:start+len(block)]=e.process(block,block.copy(),p)
+            # Measure the audible octave's coherent frequency drift, excluding other harmonics.
+            section=out[48000*4:48000*14,0];spectrum=np.fft.fft(section)
+            frequencies=np.fft.fftfreq(len(section),1/48000)
+            spectrum[(frequencies<400)|(frequencies>480)]=0
+            analytic=np.fft.ifft(spectrum)
+            instant=np.diff(np.unwrap(np.angle(analytic)))*48000/(2*np.pi)
+            instant=instant[48000:48000*9].reshape(-1,240).mean(axis=1)
+            time=np.arange(len(instant))*.005
+            design=np.stack([np.ones_like(time),np.sin(time*np.pi),np.cos(time*np.pi),time],axis=1)
+            fit=np.linalg.lstsq(design,instant,rcond=None)[0]
+            excursions[depth]=float(1200*np.log2(1+np.hypot(fit[1],fit[2])/440))
+        self.assertLess(excursions[0.],.1)
+        self.assertLess(excursions[.2],1.)
+        self.assertGreater(excursions[.5],1.);self.assertLess(excursions[.5],3.)
+        self.assertGreater(excursions[1.],5.);self.assertLess(excursions[1.],10.)
+        self.assertLess(excursions[.2],excursions[.5]*.3)
 
     def test_choice_keeps_original_path_and_only_processes_selected_engine(self):
         class FX:sample_rate=48000
