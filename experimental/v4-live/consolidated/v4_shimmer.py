@@ -158,8 +158,8 @@ def install(main):
         'stardust.decay':'Controls how long the shimmer tail lingers.',
         'stardust.pitch':'Pitch movement recirculated inside Stardust.',
         'stardust.brightness':'Darkens or brightens the circulating tail.',
-        'stardust.frequency':'Rate of the delay modulation.',
-        'stardust.depth':'Amount of movement in the delay times.',
+        'stardust.frequency':'Rate of the shimmer pitch modulation.',
+        'stardust.depth':'Amount of pitch movement; the reverb bed stays steady.',
         'stardust.input':'Level of the dry signal.',
         'stardust.send':'Level feeding the Stardust network.',
         'stardust.return':'Level of the Stardust tail.'}

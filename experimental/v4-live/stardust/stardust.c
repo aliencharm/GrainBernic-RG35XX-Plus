@@ -86,8 +86,9 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
   float z[8],sum=0,wet[2]={0,0};
   for(int j=0;j<8;j++){
    s->delay[j]+=alpha*(target_delay[j]-s->delay[j]);s->gain[j]+=alpha*(target_gain[j]-s->gain[j]);s->norm[j]+=alpha*(target_norm[j]-s->norm[j]);
-   float mod=sine(s,s->modphase+j*.137f)*fminf(s->depth,s->delay[j]*.35f);
-   float v=read1(s->fdn+j*s->fdn_cap,s->fdn_cap,s->wi,s->delay[j]+mod);
+   /* Keep the diffuse bed stationary: moving these eight resonances adds
+      level beating alongside the intended pitch modulation, even at modest Depth. */
+   float v=read1(s->fdn+j*s->fdn_cap,s->fdn_cap,s->wi,s->delay[j]);
    s->damp[j]=clean(s->damp[j]+s->bright*(v-s->damp[j]));s->damp2[j]=clean(s->damp2[j]+s->bright*(s->damp[j]-s->damp2[j]));z[j]=s->damp2[j];sum+=z[j];
    wet[0]+=z[j]*sl[j]*.35355339f;wet[1]+=z[j]*srn[j]*.35355339f;
   }

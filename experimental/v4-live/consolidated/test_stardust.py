@@ -152,6 +152,43 @@ class StardustTests(unittest.TestCase):
         fast=self.render(seconds=1,**{'stardust.depth':0,'stardust.frequency':5})
         np.testing.assert_array_equal(slow,fast)
 
+    def test_depth_modulates_pitch_without_fast_envelope_beating(self):
+        # The 20% onset reported on device is reproduced on a sustained 220 Hz note.
+        # Keep the blend and Depth scaling unchanged: no pulse from moving FDN resonances.
+        for depth in (.18,.2,.3,.5,1.):
+            e=StardustDSP(48000,self.library);self.addCleanup(e.close)
+            p=Params(**{'stardust.input':0,'stardust.predelay':0,'stardust.return':1,'stardust.pitch':12,'stardust.depth':depth,'stardust.frequency':.5,'stardust.size':.5,'stardust.decay':.8})
+            signal=np.repeat((.2*np.sin(np.arange(48000*12)*2*np.pi*220/48000)).astype(np.float32)[:,None],2,axis=1)
+            out=np.empty_like(signal)
+            for start in range(0,len(signal),512):
+                block=signal[start:start+512];out[start:start+len(block)]=e.process(block,block.copy(),p)
+            envelope=np.sqrt(np.mean(out[48000*4:].reshape(-1,240,2)**2,axis=1))
+            spec=np.abs(np.fft.rfft((envelope-envelope.mean(axis=0))*np.hanning(len(envelope))[:,None],axis=0))
+            frequencies=np.fft.rfftfreq(len(envelope),.005)
+            band=(frequencies>=5)&(frequencies<=30)
+            pulse=np.max(spec[band],axis=0)/(len(envelope)/4*envelope.mean(axis=0))
+            self.assertLess(float(max(pulse)),.08,(depth,pulse))
+            self.assertLess(float(max(envelope.std(axis=0)/envelope.mean(axis=0))),.2,(depth,))
+
+    def test_rhythmic_input_tail_at_reported_modulation_settings(self):
+        e=StardustDSP(48000,self.library);self.addCleanup(e.close)
+        p=Params(**{'stardust.input':0,'stardust.predelay':0,'stardust.return':1,'stardust.pitch':12,'stardust.depth':.2,'stardust.frequency':.5,'stardust.size':.5,'stardust.decay':.8})
+        time=np.arange(48000*20)/48000;beat=time%.5
+        envelope=(1-np.exp(-beat/.003))*np.exp(-beat/.07)*(time<10)
+        signal=np.repeat((.2*np.sin(time*2*np.pi*220)*envelope).astype(np.float32)[:,None],2,axis=1)
+        out=np.empty_like(signal)
+        for start in range(0,len(signal),512):
+            block=signal[start:start+512];out[start:start+len(block)]=e.process(block,block.copy(),p)
+        self.assertTrue(np.isfinite(out).all())
+        # After input stops, distinguish periodic fast beating from the smooth tail decay.
+        env=np.sqrt(np.mean(out[48000*12:48000*18].reshape(-1,240,2)**2,axis=1))
+        grid=np.arange(len(env))*.005
+        trend=np.exp(np.stack([np.polyval(np.polyfit(grid,np.log(env[:,c]+1e-12),1),grid) for c in (0,1)],axis=1))
+        normalized=env/trend
+        spec=np.abs(np.fft.rfft((normalized-normalized.mean(axis=0))*np.hanning(len(env))[:,None],axis=0))
+        frequencies=np.fft.rfftfreq(len(env),.005);band=(frequencies>=5)&(frequencies<=30)
+        self.assertLess(float(np.max(spec[band])/(len(env)/4)),.12)
+
     def test_choice_keeps_original_path_and_only_processes_selected_engine(self):
         class FX:sample_rate=48000
         fx=FX();choice=ShimmerChoice(fx);p=Params(**{'shimmer.mix':.8,'reverb.mix':.7})
