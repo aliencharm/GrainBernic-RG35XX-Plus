@@ -14,7 +14,7 @@ def fit_label(value,width,scale):
 class RecordingUI:
     def __init__(self,main,controller,router=None):
         self.main=main;self.controller=controller;self.router=router;self.initialized=False
-        self.sample_mixer=False;self.sample_selection=0;self._drawing_browser=False;self.pending_delete=None;self._menu_back=False;self._menu_save=False
+        self.sample_mixer=False;self.sample_selection=0;self._drawing_browser=False;self.pending_delete=None;self._menu_back=False;self._live_actions=[];self._captured_buttons=set()
     def save_frozen_sample(self):
         c=self.controller;worker=getattr(self.main,'audio_worker',None)
         if not c.active() or worker is None or not worker.running:
@@ -180,10 +180,14 @@ class RecordingUI:
             for event in original_events(*args,**kwargs):
                 browser=main.controls.current_tab=='SAMPLE' and main.record_mode=='browser'
                 live=main.controls.current_tab=='SAMPLE' and main.record_mode=='ready' and c.mode=='LIVE'
-                if (browser or live) and event.type in (pygame.JOYBUTTONDOWN,pygame.JOYBUTTONUP) and event.button==14:
-                    if event.type==pygame.JOYBUTTONDOWN:
-                        if live:self._menu_save=True
-                        else:self._menu_back=True
+                live_buttons={4:'LIVE_BACK',5:'LIVE_FREEZE',6:'LIVE_TOGGLE',7:'LIVE_SAMPLE',14:'SAVE_FROZEN'}
+                if event.type==pygame.JOYBUTTONUP and event.button in self._captured_buttons:
+                    self._captured_buttons.discard(event.button)
+                elif live and event.type==pygame.JOYBUTTONDOWN and event.button in live_buttons:
+                    self._captured_buttons.add(event.button)
+                    self._live_actions.append((live_buttons[event.button],None))
+                elif browser and event.type==pygame.JOYBUTTONDOWN and event.button==14:
+                    self._captured_buttons.add(event.button);self._menu_back=True
                 else:result.append(event)
             return result
         pygame.event.get=events
@@ -192,8 +196,8 @@ class RecordingUI:
             actions=previous_filter(actions)
             if self._menu_back:
                 self._menu_back=False;actions=list(actions)+[('SAMPLE_BACK',None)]
-            if self._menu_save:
-                self._menu_save=False;actions=list(actions)+[('SAVE_FROZEN',None)]
+            if self._live_actions:
+                actions=list(actions)+self._live_actions;self._live_actions=[]
             if main.controls.current_tab=='SAMPLE' and c.mode!='LIVE' and main.record_mode in ('browser','ready'):
                 return [('SAMPLE_MIXER' if action=='SELECT' else action,value) for action,value in actions]
             return actions
@@ -214,6 +218,8 @@ class RecordingUI:
             original=main.handle_record_action
             def handle(action,value):
                 if main.controls.current_tab!='SAMPLE':return original(action,value)
+                if c.mode=='LIVE':
+                    action={'LIVE_BACK':'B','LIVE_FREEZE':'A','LIVE_TOGGLE':'Y','LIVE_SAMPLE':'X'}.get(action,action)
                 mode=main.record_mode
                 if mode=='browser' and action in ('SAMPLE_BACK','MENU','LEFT'):
                     if value!=0:
@@ -272,8 +278,13 @@ class RecordingUI:
                 if action=='Y' and mode in ('browser','ready'):
                     if value==0:return True
                     if c.mode!='LIVE':self.start_recording();return True
-                    if c.active() and c.bus().get('transport.playing')>=.5:return original('Y',value)
-                    return original('A',value)
+                    if c.active():c.stop_live()
+                    else:
+                        try:c.start_live()
+                        except Exception as exc:
+                            c.stop_live();c.message=str(exc)
+                    self.set_page('ready')
+                    return True
                 if action=='B' and mode=='ready' and c.mode=='LIVE':
                     if value!=0:
                         if c.active():c.stop_live()
@@ -322,8 +333,8 @@ class RecordingUI:
                     items=[('B DELETE',accent),('A CANCEL',gray)] if self.pending_delete else [('A LOAD',accent),('B DELETE' if self.selected_sample_file() else 'B BACK',gray),('X LIVE',accent),('MENU BACK',gray),('SELECT MIX',gray),('L2/R2 INPUT',gray),('START PREVIEW',gray)]
                 elif main.record_mode=='ready':
                     if c.mode=='LIVE':
-                        action='Y FREEZE' if c.active() and c.bus().get('transport.playing')>=.5 else 'Y RESUME' if c.active() else 'Y START'
-                        items=[('D-PAD MIX',gray),('X SAMPLE',accent),(action,accent),('A FREEZE',gray),('B STOP',gray),('MENU SAVE',accent)] if c.active() and c.bus().get('live.freeze')>=.5 else [('D-PAD MIX',gray),('X SAMPLE',accent),(action,accent),('A FREEZE',gray),('B STOP/BACK',gray),('L2/R2 INPUT',gray)]
+                        action='Y STOP' if c.active() else 'Y START'
+                        items=[('D-PAD MIX',gray),('X SAMPLE',accent),(action,accent),('A FREEZE',gray),('B STOP' if c.active() else 'B BACK',gray),('MENU SAVE',accent)] if c.active() and c.bus().get('live.freeze')>=.5 else [('D-PAD MIX',gray),('X SAMPLE',accent),(action,accent),('A FREEZE',gray),('B STOP' if c.active() else 'B BACK',gray),('L2/R2 INPUT',gray)]
                     else:
                         action='A/START PAUSE' if c.bus().get('transport.playing')>=.5 else 'A/START PLAY'
                         items=[('D-PAD MIX',gray),('X LIVE',accent),('Y RECORD',accent),('SELECT/B BACK',gray),(action,accent)]

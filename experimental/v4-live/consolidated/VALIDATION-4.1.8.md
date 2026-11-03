@@ -11,3 +11,9 @@ The full archive and V4.1.7-to-4.1.8 update overlay pass manifest/inventory/hash
 ## V4.1.9 MENU save action
 
 56 host tests pass. The native regression now posts physical MENU down/up events through the actual controller translator, checks the SAVE_FROZEN action and validates complete 16-second WAV output. Logical MENU repeats save successfully and unique filenames preserve previous exports. SELECT is passed through unchanged to the original application. MENU outside frozen LIVE is guarded, and SAMPLE browser MENU navigation is unchanged. Both on-screen and footer hints now say MENU. The V4.1.8-to-4.1.9 update is verified against the full target manifest.
+
+## V4.1.10 LIVE button ownership
+
+The original V4.1.8/V4.1.9 UI still delegated Y to an older Freeze branch. Y is now explicit start/stop in LIVE, including frozen and paused states. A remains Freeze only. B retains stop-then-back behavior: active LIVE stops on the first press and stays on its screen; a second B returns to SAMPLE. X stops and returns to SAMPLE directly. MENU export and SELECT pause/resume pass-through are retained. Other tabs and SAMPLE recording are not remapped.
+
+56 host tests pass. The isolated ARM --live-controls regression sends mapped physical A/B/X/Y events through the controller translator and checks running, frozen, paused, stopped and SAMPLE return states. It checks both Y stopping and B stopping while frozen, B backing out only on the next press, and X returning while running/frozen. Captured button releases are consumed only when the matching press was intercepted, preserving releases from buttons used to enter LIVE. The native --frozen-save regression still verifies physical MENU writes a complete 16-second WAV and SELECT passes through unchanged. Footer screenshots show Y STOP and A FREEZE. Package hashes and the V4.1.9 update overlay are verified. Device confirmation is required for physical interaction outside emulation.

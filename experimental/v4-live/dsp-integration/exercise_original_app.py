@@ -18,12 +18,12 @@ integrated='--integrated' in sys.argv
 final_entry='--final-entry' in sys.argv
 controller=None
 project_checks=None
-if '--project-playback' in sys.argv or '--sample-mixer' in sys.argv or '--input-unavailable' in sys.argv or '--sample-delete' in sys.argv or '--frozen-save' in sys.argv:
-    checks_file='frozen_save_regression.py' if '--frozen-save' in sys.argv else 'sample_delete_regression.py' if '--sample-delete' in sys.argv else 'input_unavailable_regression.py' if '--input-unavailable' in sys.argv else 'sample_mixer_regression.py' if '--sample-mixer' in sys.argv else 'project_regression.py'
+if '--project-playback' in sys.argv or '--sample-mixer' in sys.argv or '--input-unavailable' in sys.argv or '--sample-delete' in sys.argv or '--frozen-save' in sys.argv or '--live-controls' in sys.argv:
+    checks_file='live_controls_regression.py' if '--live-controls' in sys.argv else 'frozen_save_regression.py' if '--frozen-save' in sys.argv else 'sample_delete_regression.py' if '--sample-delete' in sys.argv else 'input_unavailable_regression.py' if '--input-unavailable' in sys.argv else 'sample_mixer_regression.py' if '--sample-mixer' in sys.argv else 'project_regression.py'
     path=Path(__file__).resolve().parents[1]/'consolidated'/checks_file
     spec=importlib.util.spec_from_file_location('v4_project_regression',path)
     module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
-    checks_cls=module.FrozenChecks if '--frozen-save' in sys.argv else module.DeleteChecks if '--sample-delete' in sys.argv else module.InputChecks if '--input-unavailable' in sys.argv else module.MixerChecks if '--sample-mixer' in sys.argv else module.ProjectChecks
+    checks_cls=module.LiveControlsChecks if '--live-controls' in sys.argv else module.FrozenChecks if '--frozen-save' in sys.argv else module.DeleteChecks if '--sample-delete' in sys.argv else module.InputChecks if '--input-unavailable' in sys.argv else module.MixerChecks if '--sample-mixer' in sys.argv else module.ProjectChecks
     project_checks=checks_cls(app);project_checks.prepare()
 state={'installed':False,'frames':0,'worker_constructed':0,'worker_started':0,'worker_stopped':0,'record_overlay_calls':0,'record_start_delegated':0}
 report={}
@@ -68,9 +68,9 @@ def install():
         if integrated:
             actions={1:'X',2:'A',3:'TAB_NEXT',4:'TAB_NEXT',5:'TAB_PREV',6:'TAB_PREV',7:'Y',8:'RIGHT',9:'DOWN',10:'LEFT',11:'DOWN',12:'LEFT',13:'UP',14:'RIGHT',15:'UP',16:'RIGHT',17:'B',18:'X',19:'A',20:'B',21:'EXIT'}
             if '--channel-routing' in sys.argv:
-                actions={1:'X',2:'R2',3:'A',4:'TAB_NEXT',5:'TAB_NEXT',6:'TAB_PREV',7:'TAB_PREV',8:'Y',9:'RIGHT',10:'DOWN',11:'LEFT',12:'DOWN',13:'LEFT',14:'UP',15:'RIGHT',16:'UP',17:'RIGHT',18:'L2',19:'A',20:'B',21:'X',22:'R2',23:'A',24:'B',25:'EXIT'}
+                actions={1:'X',2:'R2',3:'A',4:'TAB_NEXT',5:'TAB_NEXT',6:'TAB_PREV',7:'TAB_PREV',8:'A',9:'RIGHT',10:'DOWN',11:'LEFT',12:'DOWN',13:'LEFT',14:'UP',15:'RIGHT',16:'UP',17:'RIGHT',18:'L2',19:'A',20:'B',21:'X',22:'R2',23:'A',24:'B',25:'EXIT'}
             if '--record-ui' in sys.argv:
-                actions={1:'X',2:'R2',3:'Y',4:'TAB_NEXT',5:'TAB_NEXT',6:'TAB_PREV',7:'TAB_PREV',8:'Y',9:'RIGHT',10:'DOWN',11:'LEFT',12:'DOWN',13:'LEFT',14:'UP',15:'RIGHT',16:'UP',17:'RIGHT',18:'L2',19:'Y',20:'B',21:'B',23:'R2',24:'Y',25:'Y',26:'START',27:'EXIT'}
+                actions={1:'X',2:'R2',3:'Y',4:'TAB_NEXT',5:'TAB_NEXT',6:'TAB_PREV',7:'TAB_PREV',8:'A',9:'RIGHT',10:'DOWN',11:'LEFT',12:'DOWN',13:'LEFT',14:'UP',15:'RIGHT',16:'UP',17:'RIGHT',18:'L2',19:'Y',20:'B',21:'B',23:'R2',24:'Y',25:'Y',26:'START',27:'EXIT'}
             if project_checks:actions=getattr(project_checks,'actions',{2:'START',4:'START',6:'TAB_NEXT',8:'START',10:'EXIT'})
             action=actions.get(state['frames'])
             return [(action,None)] if action else []

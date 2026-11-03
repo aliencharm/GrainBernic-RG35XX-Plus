@@ -7,7 +7,7 @@ import numpy as np
 
 class MixerChecks:
     actions={1:'SELECT',2:'LEFT',3:'DOWN',4:'LEFT',5:'DOWN',6:'LEFT',7:'START',8:'SELECT',
-             9:'X',10:'R2',11:'Y',12:'Y',13:'X',14:'SELECT',15:'B',16:'Y',17:'Y',
+             9:'X',10:'R2',11:'Y',12:'A',13:'X',14:'SELECT',15:'B',16:'Y',17:'Y',
              19:'START',20:'START',21:'SELECT',22:'X',23:'X',24:'X',25:'Y',26:'A',27:'A',28:'X',29:'EXIT'}
     def __init__(self,app):self.app=Path(app)
     def prepare(self):

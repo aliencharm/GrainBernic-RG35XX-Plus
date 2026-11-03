@@ -4,6 +4,10 @@
 
 AntevasinBuild, based on the official **ETRNLIAM GrainBrick beta 1.0**, combines the original app/DSP with the tested V4 live-input, routing and UI changes through UI Test 1.13. The proprietary original engine and native libraries remain unchanged. This release consolidates the working build; it does not introduce a new audio algorithm.
 
+## V4.1.10 LIVE controls
+
+Close GrainBrick and merge `GrainBrick_V4.1.10_Update.zip` into installed V4.1.9. LIVE controls are now explicit: Y starts/stops even while frozen or paused; A toggles Freeze; SELECT retains pause/resume; MENU saves the full frozen buffer; X returns to SAMPLE while running or frozen, stopping LIVE first. B stops LIVE and stays on its screen; B again returns to SAMPLE. The footer shows Y START / Y STOP and A FREEZE. Physical face buttons on the LIVE screen are routed to these actions before the original app can reinterpret them. Other tabs, SAMPLE recording and SAMPLE browser controls retain their mappings.
+
 ## V4.1.9 MENU saves frozen LIVE audio
 
 Close GrainBrick and merge `GrainBrick_V4.1.9_Update.zip` into installed V4.1.8. MENU now saves the full frozen LIVE buffer; SELECT retains its current pause/resume behavior. Freeze first, then press MENU and look for SAVED LIVE_FREEZE... below the controls. The footer and screen show MENU SAVE. Files remain in samples/recordings. MENU still goes to the parent folder in the SAMPLE browser.
