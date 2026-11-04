@@ -23,7 +23,7 @@ def main():
         for path in locks:
             lock=stack.enter_context(path.open('a'))
             fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-        print('GRAINBRICK V4.2.8:',str(app),flush=True)
+        print('GRAINBRICK V4.2.9:',str(app),flush=True)
         prepare(app)
         config=device_config(app/'config.json')
         if 'V4_USB_NOT_CONNECTED' not in config['capture']:

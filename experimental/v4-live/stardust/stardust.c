@@ -58,13 +58,20 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
  for(int i=0;i<10;i++)if(!isfinite(p[i]))return -2;
  /* Long diffuse bed plus a prominent stereo pitch return; no feedback gain boost. */
  float room=.2f+4.6f*clamp(p[1],0,1),rt=.25f+59.75f*powf(clamp(p[2],0,1),1.4f);
- float target_delay[8],target_gain[8],target_norm[8];
- for(int j=0;j<8;j++){target_delay[j]=times[j]*s->sr*room;target_gain[j]=powf(.001f,times[j]*room/rt);target_norm[j]=sqrtf(fmaxf(0,1-target_gain[j]*target_gain[j]));}
+ float target_delay[8],target_gain[8],target_norm[8],mean_loss=0;
+ for(int j=0;j<8;j++){
+  target_delay[j]=times[j]*s->sr*room;target_gain[j]=powf(.001f,times[j]*room/rt);
+  float loss=fmaxf(1e-6f,1-target_gain[j]*target_gain[j]);
+  target_norm[j]=sqrtf(loss);mean_loss+=loss*.125f;
+ }
+ /* One network-wide loss correction preserves the relative tap balance. */
+ float compensation=sqrtf((.2f+.8f*mean_loss)/mean_loss);
+ for(int j=0;j<8;j++)target_norm[j]*=compensation;
  float ratio=powf(2.f,clamp(p[3],-24,24)/12.f);
  float fc=120.f*powf(150.f,clamp(p[4],0,1));fc=fminf(fc,.43f*s->sr);
  float bright=1.f-expf(-2*PI*fc/s->sr),alpha=1.f-expf(-1.f/(.02f*s->sr));
  float aa=1.f-expf(-2*PI*fminf(fc,.4f*s->sr/fmaxf(1,ratio))/s->sr);
- float freq=clamp(p[5],.05f,5.f),depth=clamp(p[6],0,1)*.006f*s->sr;
+ float freq=clamp(p[5],.05f,5.f),depth=powf(clamp(p[6],0,1),2.75f)*.006f*s->sr;
  float predelay=clamp(p[0],-1000,1000)*.001f*s->sr;
  float input=clamp(p[7],0,1),send=clamp(p[8],0,1),ret=clamp(p[9],0,1);
  if(!s->ready){
@@ -98,10 +105,10 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
    s->pitch_lp[c][0]=clean(s->pitch_lp[c][0]+s->aa*(wet[c]-s->pitch_lp[c][0]));
    s->pitch_lp[c][1]=clean(s->pitch_lp[c][1]+s->aa*(s->pitch_lp[c][0]-s->pitch_lp[c][1]));
    pitch_input[c]=s->pitch_lp[c][1];
-   /* Ambient drift, not foreground vibrato: about +/-8 cents at full Depth,
-      with a quadratic response for fine control of the lower half. */
+   /* Ambient drift, not foreground vibrato: about +/-24 cents at full Depth,
+      with a progressive response for fine control of the lower half. */
    float amount=s->depth/(.006f*s->sr);
-   float modulation=.0046f*amount*amount*sine(s,s->modphase+c*.31f);
+   float modulation=.01396f*amount*sine(s,s->modphase+c*.31f);
    pitch_ratio[c]=s->ratio*(1+(c? .0015f:-.0015f)*shift+modulation);
   }
   cloud_tick(&s->cloud,pitch_input,pitched,pitch_ratio);
@@ -121,7 +128,13 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
    /* The audible return is chiefly pitched, independent of the loop's loss budget.
       Near zero transposition, retain the unshifted output without doubling it. */
    float cloud=wet[c]*(1-.8f*shift)+pitched[c]*(.979796f*shift);
-   float v=dry*s->input+cloud*s->ret;
+   /* Normalize the projected network return to a usable wet level. */
+   float v=dry*s->input+2.f*cloud*s->ret;
+   /* Smooth headroom at strong wet settings; Return zero retains exact dry bypass. */
+   if(s->ret>1e-6f&&fabsf(v)>.9f){
+    float excess=fabsf(v)-.9f,limited=copysignf(.9f+.08f*excess/(.08f+excess),v);
+    v+=clamp(s->ret*10.f,0,1)*(limited-v);v=clamp(v,-1.f,1.f);
+   }
    audio[2*n+c]=isfinite(v)?clamp(v,-4.f,4.f):0;
   }
   s->modphase+=freq/s->sr;if(s->modphase>=1)s->modphase-=1;

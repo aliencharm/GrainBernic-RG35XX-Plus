@@ -159,10 +159,10 @@ def install(main):
         'stardust.pitch':'Pitch movement recirculated inside Stardust.',
         'stardust.brightness':'Darkens or brightens the circulating tail.',
         'stardust.frequency':'Speed of the gentle shimmer pitch drift.',
-        'stardust.depth':'Gentle pitch drift; the lower half gives finer control.',
+        'stardust.depth':'Fine drift below halfway; stronger movement toward full.',
         'stardust.input':'Level of the dry signal.',
         'stardust.send':'Level feeding the Stardust network.',
-        'stardust.return':'Level of the Stardust tail.'}
+        'stardust.return':'Wet shimmer level, from subtle to prominent.'}
     original_labels={'shimmer.mix':'MIX','shimmer.feedback':'FEEDBACK','shimmer.tone':'TONE','shimmer.smooth':'SMOOTH','shimmer.dual':'DUAL','shimmer.shift':'SHIFT','shimmer.spread':'SPREAD','shimmer.voice2_level':'VOICE 2'}
     descriptions.update({'shimmer.mix':'Blend in the original shimmer.','shimmer.feedback':'How much shimmer returns to its input.','shimmer.tone':'Brightness of the original shimmer tail.','shimmer.smooth':'Smooth the original shimmer texture.','shimmer.dual':'Enable the original second shimmer voice.','shimmer.shift':'Pitch shift of the original shimmer voice.','shimmer.spread':'Stereo spread of the original shimmer voices.','shimmer.voice2_level':'Level of the original second shimmer voice.'})
     def draw(ui,control,parameters,audio_worker=None):

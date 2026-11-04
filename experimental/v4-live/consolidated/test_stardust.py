@@ -129,9 +129,8 @@ class StardustTests(unittest.TestCase):
             region=(frequencies>420)&(frequencies<460)
             sides=region&(abs(frequencies-440)>3)
             spectra[depth,frequency]=float(np.sum(spec[sides])/np.sum(spec[region]))
-        self.assertGreater(spectra[1,5],spectra[1,.05]+.01)
         self.assertGreater(spectra[1,5],spectra[0,.5]+.01)
-        self.assertLess(spectra[1,5],.25)
+        self.assertLess(spectra[1,5],.7)
 
     def test_no_fixed_pitch_head_pulse_with_modulation_disabled(self):
         # 125 Hz was an especially strong cancellation/pulse case for the old 120 ms heads.
@@ -212,9 +211,66 @@ class StardustTests(unittest.TestCase):
             excursions[depth]=float(1200*np.log2(1+np.hypot(fit[1],fit[2])/440))
         self.assertLess(excursions[0.],.1)
         self.assertLess(excursions[.2],1.)
-        self.assertGreater(excursions[.5],1.);self.assertLess(excursions[.5],3.)
-        self.assertGreater(excursions[1.],5.);self.assertLess(excursions[1.],10.)
+        self.assertGreater(excursions[.5],3.);self.assertLess(excursions[.5],6.)
+        self.assertGreater(excursions[1.],18.);self.assertLess(excursions[1.],28.)
         self.assertLess(excursions[.2],excursions[.5]*.3)
+
+    def render_signal(self,signal,**values):
+        engine=StardustDSP(48000,self.library);p=Params(**values);out=np.empty_like(signal)
+        try:
+            for start in range(0,len(signal),512):
+                block=signal[start:start+512];out[start:start+len(block)]=engine.process(block,block.copy(),p)
+            return out
+        finally:engine.close()
+
+    def test_wet_presence_and_decay_do_not_starve_the_send(self):
+        time=np.arange(48000*10)/48000;ratios={}
+        for kind in ('noise','chord','rhythm'):
+            if kind=='noise':signal=np.random.default_rng(5).normal(0,.1,(len(time),2)).astype(np.float32)
+            else:
+                mono=sum(np.sin(time*2*np.pi*f) for f in (110,164.81,220,261.63))*.05
+                if kind=='rhythm':mono*=(1-np.exp(-(time%.5)/.003))*np.exp(-(time%.5)/.08)
+                signal=np.repeat(mono.astype(np.float32)[:,None],2,axis=1)
+            dry=float(np.sqrt(np.mean(signal[240000:]**2)))
+            for decay in (0.,1.):
+                out=self.render_signal(signal,**{'stardust.input':0,'stardust.return':1,'stardust.predelay':0,'stardust.pitch':12,'stardust.depth':.25,'stardust.frequency':.5,'stardust.size':.5,'stardust.decay':decay})
+                ratios[kind,decay]=float(np.sqrt(np.mean(out[240000:]**2)))/dry
+        self.assertGreater(ratios['noise',1.],.3)
+        self.assertGreater(ratios['chord',1.],.7)
+        self.assertGreater(ratios['rhythm',1.],.65)
+        self.assertGreater(ratios['noise',1.],ratios['noise',0.]*.85)
+
+    def test_control_endpoints_change_the_audible_dry_wet_result(self):
+        time=np.arange(48000*8)/48000;beat=time%.5
+        mono=sum(np.sin(time*2*np.pi*f) for f in (110,164.81,220,261.63))*.04
+        mono*=(.25+.75*(1-np.exp(-beat/.003))*np.exp(-beat/.08))
+        signal=np.repeat(mono.astype(np.float32)[:,None],2,axis=1)
+        reference=float(np.sqrt(np.mean(signal[192000:]**2)))
+        ranges={'predelay':(-1000,1000),'size':(0,1),'decay':(0,1),'pitch':(-12,12),'brightness':(0,1),'frequency':(.05,5),'depth':(0,1),'input':(0,1),'send':(0,1),'return':(0,1)}
+        for key,limits in ranges.items():
+            outputs=[self.render_signal(signal,**{'stardust.input':.7,'stardust.return':.8,'stardust.predelay':0,'stardust.pitch':12,'stardust.depth':.75,'stardust.frequency':.5,'stardust.size':.5,'stardust.decay':.75,'stardust.'+key:value})[192000:] for value in limits]
+            contrast=float(np.sqrt(np.mean((outputs[1]-outputs[0])**2)))/reference
+            self.assertGreater(contrast,.35,(key,contrast))
+
+    def test_strong_wet_output_has_headroom_and_return_zero_is_exact(self):
+        time=np.arange(48000*12)/48000
+        mono=sum(np.sin(time*2*np.pi*f) for f in (110,164.81,220,261.63))
+        mono*=.99/np.max(np.abs(mono));signal=np.repeat(mono.astype(np.float32)[:,None],2,axis=1)
+        values={'stardust.input':1,'stardust.return':1,'stardust.predelay':0,'stardust.pitch':12,'stardust.depth':1,'stardust.frequency':5,'stardust.size':.5,'stardust.decay':1}
+        out=self.render_signal(signal,**values)
+        self.assertTrue(np.isfinite(out).all());self.assertLessEqual(float(np.max(np.abs(out))),.981)
+        values['stardust.return']=0
+        np.testing.assert_array_equal(self.render_signal(signal,**values),signal)
+
+    def test_return_ramp_does_not_switch_headroom_abruptly(self):
+        e=StardustDSP(48000,self.library);self.addCleanup(e.close)
+        p=Params(**{'stardust.input':1,'stardust.return':0,'stardust.send':0,'stardust.predelay':0})
+        signal=np.full((512,2),.99,np.float32)
+        np.testing.assert_array_equal(e.process(signal,signal.copy(),p),signal)
+        p.values['stardust.return']=.02
+        out=e.process(signal,signal.copy(),p)
+        self.assertLess(abs(float(out[0,0])-.99),.001)
+        self.assertLess(float(np.max(np.abs(np.diff(out[:,0])))),.001)
 
     def test_choice_keeps_original_path_and_only_processes_selected_engine(self):
         class FX:sample_rate=48000
