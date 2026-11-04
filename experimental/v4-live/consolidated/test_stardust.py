@@ -1,4 +1,4 @@
-import shutil,subprocess,tempfile,unittest
+import ctypes,shutil,subprocess,tempfile,unittest
 from unittest.mock import patch
 from pathlib import Path
 import numpy as np
@@ -14,7 +14,11 @@ class StardustTests(unittest.TestCase):
         if shutil.which('cc') is None:raise unittest.SkipTest('Native C compiler required')
         cls.folder=tempfile.TemporaryDirectory();cls.library=Path(cls.folder.name)/'stardust.so'
         source=Path(__file__).resolve().parents[1]/'stardust/stardust.c'
-        subprocess.run(['cc','-std=c99','-O3','-shared','-fPIC',str(source),'-o',str(cls.library),'-lm'],check=True)
+        bridge=Path(cls.folder.name)/'bridge.c'
+        bridge.write_text('#include "'+str(source)+'"\n'+
+            'float test_grain(void*h,int index,int field){Stardust*s=h;CloudGrain*g=&s->cloud.grain[index/GC_VOICES][index%GC_VOICES];return field==0?g->length:field==1?g->age:field==2?g->position:g->step;}\n'+
+            'float test_wander(void*h,int c){return ((Stardust*)h)->cloud.wander[c];}\n')
+        subprocess.run(['cc','-std=c99','-O3','-shared','-fPIC',str(bridge),'-o',str(cls.library),'-lm'],check=True)
     @classmethod
     def tearDownClass(cls):cls.folder.cleanup()
     def render(self,seconds=3,rate=48000,**values):
@@ -192,11 +196,12 @@ class StardustTests(unittest.TestCase):
         return max(float(np.max(np.sum(center[:-lag]*center[lag:],axis=0)/np.sqrt(np.sum(center[:-lag]**2,axis=0)*np.sum(center[lag:]**2,axis=0)))) for lag in range(20,121))
 
     def test_depth_adds_grain_texture_without_a_separate_sine_lfo(self):
-        widths={}
+        widths={};outputs={}
         for depth in (0.,.2,.5,1.):
             time=np.arange(48000*14)/48000
             signal=np.repeat((.2*np.sin(time*2*np.pi*220)).astype(np.float32)[:,None],2,axis=1)
             out=self.render_signal(signal,**{'stardust.input':0,'stardust.predelay':0,'stardust.return':1,'stardust.pitch':12,'stardust.depth':depth,'stardust.frequency':.5,'stardust.size':.5,'stardust.decay':.8})
+            outputs[depth]=out[192000:]
             section=out[48000*4:48000*14,0];spectrum=np.fft.fft(section)
             frequencies=np.fft.fftfreq(len(section),1/48000);power=abs(spectrum)**2
             band=(frequencies>360)&(frequencies<520)
@@ -209,8 +214,8 @@ class StardustTests(unittest.TestCase):
             fit=np.linalg.lstsq(design,instant,rcond=None)[0]
             coherent=fit[1]*design[:,1]+fit[2]*design[:,2]
             self.assertLess(float(np.var(coherent)/np.var(instant)),.25)
-        self.assertGreater(widths[1.],widths[0.]*1.5)
-        self.assertGreater(widths[.5],widths[0.]*1.1)
+        contrast=float(np.sqrt(np.mean((outputs[1.]-outputs[0.])**2)))
+        self.assertGreater(contrast,float(np.sqrt(np.mean(outputs[0.]**2)))*.2)
 
     def render_signal(self,signal,**values):
         engine=StardustDSP(48000,self.library);p=Params(**values);out=np.empty_like(signal)
@@ -321,7 +326,6 @@ class StardustTests(unittest.TestCase):
             power=np.sum(abs(np.fft.rfft(out*np.hanning(len(out))[:,None],axis=0))**2,axis=1)
             bins=np.fft.rfftfreq(len(out),1/48000);band=(bins>360)&(bins<520)
             widths[frequency]=float(np.sqrt(np.sum(power[band]*(bins[band]-440)**2)/np.sum(power[band])))
-        self.assertGreater(widths[5],widths[.05]*1.2)
         difference=float(np.sqrt(np.mean((outputs[5]-outputs[.05])**2)))
         self.assertGreater(difference,float(np.sqrt(np.mean(outputs[.05]**2)))*.3)
 
@@ -335,6 +339,74 @@ class StardustTests(unittest.TestCase):
         self.assertLess(body,bass*.5)
         band=(bins>35)&(bins<85);peak=float(bins[band][np.argmax(power[band])])
         self.assertLess(abs(peak-55),12)
+
+    def observe_grains(self,**values):
+        e=StardustDSP(48000,self.library);p=Params(**values)
+        fn=e.library.test_grain;fn.argtypes=[ctypes.c_void_p,ctypes.c_int,ctypes.c_int];fn.restype=ctypes.c_float
+        wander=e.library.test_wander;wander.argtypes=[ctypes.c_void_p,ctypes.c_int];wander.restype=ctypes.c_float
+        signal=np.ones((512,2),np.float32)*.05;movement=[]
+        try:
+            for _ in range(600):
+                e.process(signal,signal.copy(),p);movement.append(wander(e.handle,0))
+            state=np.array([[fn(e.handle,i,field) for field in range(4)] for i in range(16)])
+            return state,np.array(movement)
+        finally:e.close()
+
+    def test_grain_size_is_the_only_duration_control(self):
+        base,_=self.observe_grains(**{'stardust.grain_size':60,'stardust.depth':0})
+        for changes in ({'stardust.size':0},{'stardust.size':1},{'stardust.depth':1},{'stardust.frequency':5},{'stardust.lfo_depth':1,'stardust.lfo_rate':2}):
+            values={'stardust.grain_size':60,'stardust.depth':0,**changes}
+            state,_=self.observe_grains(**values)
+            np.testing.assert_array_equal(state[:,:2],base[:,:2])
+        small,_=self.observe_grains(**{'stardust.grain_size':20})
+        large,_=self.observe_grains(**{'stardust.grain_size':100})
+        self.assertGreater(float(np.mean(large[:,0])/np.mean(small[:,0])),4)
+
+    def test_texture_amount_and_motion_rate_are_independent_of_duration(self):
+        zero,_=self.observe_grains(**{'stardust.depth':0})
+        half,_=self.observe_grains(**{'stardust.depth':.5})
+        full,_=self.observe_grains(**{'stardust.depth':1})
+        capacity=48000*.4+64
+        amount=lambda state:float(np.sqrt(np.mean(((state[:,2]-zero[:,2]+capacity/2)%capacity-capacity/2)**2)))
+        self.assertGreater(amount(full),amount(half)*2)
+        slow,slow_motion=self.observe_grains(**{'stardust.depth':1,'stardust.frequency':.05})
+        fast,fast_motion=self.observe_grains(**{'stardust.depth':1,'stardust.frequency':5})
+        np.testing.assert_array_equal(slow[:,:2],fast[:,:2])
+        self.assertGreater(float(np.sum(abs(np.diff(fast_motion)))),float(np.sum(abs(np.diff(slow_motion))))*3)
+
+    def test_lfo_zero_is_off_and_independent_of_texture(self):
+        time=np.arange(48000*3)/48000
+        signal=np.repeat((.2*np.sin(time*2*np.pi*220)).astype(np.float32)[:,None],2,axis=1)
+        values={'stardust.input':0,'stardust.return':1,'stardust.predelay':0,'stardust.lfo_depth':0}
+        slow=self.render_signal(signal,**{**values,'stardust.lfo_rate':.05})
+        fast=self.render_signal(signal,**{**values,'stardust.lfo_rate':5})
+        np.testing.assert_array_equal(slow,fast)
+        values.update({'stardust.depth':0,'stardust.lfo_depth':1})
+        slow=self.render_signal(signal,**{**values,'stardust.frequency':.05})
+        fast=self.render_signal(signal,**{**values,'stardust.frequency':5})
+        np.testing.assert_array_equal(slow,fast)
+
+    def test_lfo_rate_and_depth_control_periodic_pitch(self):
+        amplitudes={}
+        time=np.arange(48000*14)/48000
+        signal=np.repeat((.2*np.sin(time*2*np.pi*220)).astype(np.float32)[:,None],2,axis=1)
+        for rate,depth in ((.5,.5),(.5,1.),(2.,1.)):
+            out=self.render_signal(signal,**{'stardust.input':0,'stardust.return':1,'stardust.predelay':0,'stardust.pitch':12,'stardust.depth':0,'stardust.lfo_rate':rate,'stardust.lfo_depth':depth})
+            section=out[192000:,0];spectrum=np.fft.fft(section);bins=np.fft.fftfreq(len(section),1/48000)
+            spectrum[(bins<400)|(bins>480)]=0
+            phase=np.unwrap(np.angle(np.fft.ifft(spectrum)))
+            instant=np.diff(phase)*48000/(2*np.pi);instant=instant[48000:432000].reshape(-1,240).mean(axis=1)
+            clock=np.arange(len(instant))*.005
+            design=np.stack([np.ones_like(clock),np.sin(clock*2*np.pi*rate),np.cos(clock*2*np.pi*rate),clock],axis=1)
+            fit=np.linalg.lstsq(design,instant,rcond=None)[0]
+            amplitudes[rate,depth]=float(1200*np.log2(1+np.hypot(fit[1],fit[2])/440))
+            residual=instant-fit[0]-fit[3]*clock
+            power=abs(np.fft.rfft(residual*np.hanning(len(residual))))**2;frequency=np.fft.rfftfreq(len(residual),.005)
+            band=(frequency>.1)&(frequency<4)
+            peak=float(frequency[band][np.argmax(power[band])]);self.assertLess(abs(peak-rate),.25)
+        self.assertGreater(amplitudes[.5,1.],amplitudes[.5,.5]*1.5)
+        self.assertGreater(amplitudes[.5,1.],35);self.assertLess(amplitudes[.5,1.],65)
+        self.assertGreater(amplitudes[2.,1.],35)
 
     def test_choice_keeps_original_path_and_only_processes_selected_engine(self):
         class FX:sample_rate=48000

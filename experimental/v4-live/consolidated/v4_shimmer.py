@@ -4,10 +4,12 @@ import weakref
 from pathlib import Path
 import numpy as np
 
-STARDUST_PARAMS=('stardust.predelay','stardust.size','stardust.decay','stardust.pitch','stardust.brightness','stardust.frequency','stardust.depth','stardust.input','stardust.send','stardust.return')
-SHIMMER_DEFAULTS={'shimmer.type':(0.,0.,1.),**dict(zip(STARDUST_PARAMS,(
-    (100.,-1000.,1000.),(.3,0.,1.),(.8,0.,1.),(12.,-12.,12.),(1.,0.,1.),(.5,.05,5.),(.25,0.,1.),(1.,0.,1.),(1.,0.,1.),(.5,0.,1.))))}
-LABELS=dict(zip(STARDUST_PARAMS,('PRE DELAY','SIZE','DECAY','PITCH','BRIGHTNESS','FREQUENCY','DEPTH','INPUT','SEND','RETURN')))
+# Keep the original ten entries first in the native parameter buffer.
+NATIVE_PARAMS=('stardust.predelay','stardust.size','stardust.decay','stardust.pitch','stardust.brightness','stardust.frequency','stardust.depth','stardust.input','stardust.send','stardust.return','stardust.grain_size','stardust.lfo_rate','stardust.lfo_depth')
+STARDUST_PARAMS=('stardust.predelay','stardust.size','stardust.decay','stardust.pitch','stardust.brightness','stardust.grain_size','stardust.frequency','stardust.depth','stardust.lfo_rate','stardust.lfo_depth','stardust.input','stardust.send','stardust.return')
+SHIMMER_DEFAULTS={'shimmer.type':(0.,0.,1.),**dict(zip(NATIVE_PARAMS,(
+    (100.,-1000.,1000.),(.3,0.,1.),(.8,0.,1.),(12.,-12.,12.),(1.,0.,1.),(.5,.05,5.),(.25,0.,1.),(1.,0.,1.),(1.,0.,1.),(.5,0.,1.),(60.,20.,100.),(.5,.05,5.),(0.,0.,1.))))}
+LABELS=dict(zip(STARDUST_PARAMS,('PRE DELAY','SIZE','DECAY','PITCH','BRIGHTNESS','GRAIN SIZE','GRANULAR RATE','TEXTURE DEPTH','LFO RATE','LFO DEPTH','INPUT','SEND','RETURN')))
 
 class ParameterView:
     def __init__(self,parameters):self.parameters=parameters
@@ -23,12 +25,12 @@ class StardustDSP:
         lib.stardust_process.argtypes=[ctypes.c_void_p,ptr,ptr,ctypes.c_int,ptr];lib.stardust_process.restype=ctypes.c_int
         self.handle=lib.stardust_create(rate)
         if not self.handle:raise RuntimeError('Unable to allocate Stardust')
-        self.values=np.zeros(10,np.float32)
+        self.values=np.zeros(len(NATIVE_PARAMS),np.float32)
     def process(self,feed,audio,parameters):
         if feed.dtype!=np.float32 or audio.dtype!=np.float32 or feed.shape!=audio.shape or feed.ndim!=2 or feed.shape[1]!=2 or not feed.flags.c_contiguous or not audio.flags.c_contiguous:
             raise ValueError('Stardust requires matching contiguous float32 stereo blocks')
         if not len(audio):return audio
-        for index,key in enumerate(STARDUST_PARAMS):self.values[index]=parameters.get(key)
+        for index,key in enumerate(NATIVE_PARAMS):self.values[index]=parameters.get(key)
         pointer=ctypes.POINTER(ctypes.c_float)
         result=self.library.stardust_process(self.handle,feed.ctypes.data_as(pointer),audio.ctypes.data_as(pointer),len(audio),self.values.ctypes.data_as(pointer))
         if result:raise ValueError('Invalid Stardust parameters')
@@ -129,7 +131,7 @@ def install(main):
     controls.STEPS=dict(controls.STEPS);controls.DEFAULTS=dict(controls.DEFAULTS)
     for key,(value,lo,hi) in SHIMMER_DEFAULTS.items():
         controls.DEFAULTS[key]=value
-        controls.STEPS[key]=1. if key in ('shimmer.type','stardust.pitch') else 5. if key=='stardust.predelay' else .05 if key=='stardust.frequency' else .02
+        controls.STEPS[key]=1. if key in ('shimmer.type','stardust.pitch') else 5. if key in ('stardust.predelay','stardust.grain_size') else .05 if key in ('stardust.frequency','stardust.lfo_rate') else .02
     renderer=__import__('ui.renderer',fromlist=['UIEngine']).UIEngine
     original_format=renderer.format_value
     def format_value(ui,key,value):
@@ -137,7 +139,8 @@ def install(main):
         if key.startswith('stardust.'):
             if key=='stardust.predelay':return f'{value:+.0f} MS'
             if key=='stardust.pitch':return f'{value:+.0f} ST'
-            if key=='stardust.frequency':return f'{value:.2f} HZ'
+            if key in ('stardust.frequency','stardust.lfo_rate'):return f'{value:.2f} HZ'
+            if key=='stardust.grain_size':return f'{value:.1f} MS'
             return str(round(value*100))+'%'
         return original_format(ui,key,value)
     renderer.format_value=format_value
@@ -154,12 +157,15 @@ def install(main):
     descriptions={
         'shimmer.type':'Choose Original or Stardust shimmer.',
         'stardust.predelay':'Positive delays the effect send; negative delays the dry signal.',
-        'stardust.size':'Adjusts the size of the Stardust feedback network.',
+        'stardust.size':'Reverb dimensions only; grain duration is independent.',
         'stardust.decay':'Controls how long the shimmer tail lingers.',
         'stardust.pitch':'Pitch movement recirculated inside Stardust.',
         'stardust.brightness':'Warm pitched body at low values; open airy shimmer at high.',
-        'stardust.frequency':'Speed and cadence of grain scattering.',
-        'stardust.depth':'Texture intensity: smooth at low values, grainier above.',
+        'stardust.frequency':'How quickly irregular grain movement evolves.',
+        'stardust.depth':'Amount of grain scattering and tiny pitch differences.',
+        'stardust.grain_size':'Grain duration only; independent of texture and reverb size.',
+        'stardust.lfo_rate':'Speed of the separate sine pitch modulation.',
+        'stardust.lfo_depth':'Pitch-modulation amount; zero disables the sine movement.',
         'stardust.input':'Level of the dry signal.',
         'stardust.send':'Level feeding the Stardust network.',
         'stardust.return':'Wet shimmer level, from subtle to prominent.'}
@@ -179,8 +185,10 @@ def install(main):
         ui.text('MENU / A/B WHEN SELECTED',640,190,2,ui.DIM)
         ui.text(descriptions.get(selected,''),55,230,2,ui.WHITE)
         pygame.draw.line(ui.screen,ui.DIM,(55,270),(970,270),1)
+        columns=5 if parameters.get('shimmer.type')>=.5 else 4
+        spacing=188 if columns==5 else 235
         for i,key in enumerate(items[1:]):
-            x=55+(i%4)*235;y=310+(i//4)*120;color=ui.ACCENT if i+1==index else ui.WHITE
+            x=55+(i%columns)*spacing;y=310+(i//columns)*120;color=ui.ACCENT if i+1==index else ui.WHITE
             if i+1==index:ui.text('>',x-22,y,2,ui.ACCENT)
             ui.text(LABELS.get(key,original_labels.get(key,key)),x,y,2,color)
             ui.text(ui.format_value(key,parameters.get(key)),x,y+36,3,color)
@@ -189,10 +197,11 @@ def install(main):
     def navigate(control,action):
         if control.current_tab!='FX' or control.current_fx_name!='SHIMMER':return original_nav(control,action)
         items=control.current_fx_params;index=control.fx_param_indices[control.fx_page_index]
+        columns=5 if control.parameters.get('shimmer.type')>=.5 else 4
         if action=='LEFT':index=max(0,index-1)
         elif action=='RIGHT':index=min(len(items)-1,index+1)
-        elif action=='UP':index=0 if index<=4 else index-4
-        elif action=='DOWN':index=1 if index==0 else min(len(items)-1,index+4)
+        elif action=='UP':index=0 if index<=columns else index-columns
+        elif action=='DOWN':index=1 if index==0 else min(len(items)-1,index+columns)
         else:return original_nav(control,action)
         control.fx_param_indices[control.fx_page_index]=index
     controls.navigate_param=navigate

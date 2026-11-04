@@ -20,22 +20,30 @@ class StardustChecks:
         for i,key in enumerate(main.controls.current_fx_params):
             main.controls.fx_param_indices[self.index]=i
             assert main.controls.current_param==key,(i,main.controls.current_param,key)
-            before=main.params.get(key)
-            main.controls.change_param(-1)
+            saved_value=main.params.get(key)
+            if saved_value==0:main.params.set(key,.25)
+            before=main.params.get(key);main.controls.change_param(-1)
             assert main.params.get(key)<before,(key,before,main.params.get(key))
-            main.params.set(key,before)
+            main.params.set(key,saved_value)
         main.controls.fx_param_indices[self.index]=0
         main.controls.navigate_param('DOWN')
         assert main.controls.current_param=='stardust.predelay'
         main.controls.navigate_param('UP')
         assert main.controls.current_param=='shimmer.type'
+        main.params.set('stardust.grain_size',75);main.params.set('stardust.lfo_rate',1.25);main.params.set('stardust.lfo_depth',.35)
         main.project_manager.save_project('TEST_STARDUST',main.params,str(main.sample.path))
         saved=json.loads((self.app/'projects/TEST_STARDUST.json').read_text())
         assert saved['parameters']['shimmer.type']==1
         main.project_manager.apply_parameters(main.params,{'grain.enabled':1})
         assert main.params.get('shimmer.type')==0
+        assert main.params.get('stardust.lfo_depth')==0
+        assert main.params.get('stardust.grain_size')==60
         main.open_project('TEST_STARDUST')
         assert main.params.get('shimmer.type')==1
+        assert main.params.get('stardust.grain_size')==75
+        assert main.params.get('stardust.lfo_rate')==1.25
+        assert main.params.get('stardust.lfo_depth')==.35
+        main.params.set('stardust.lfo_depth',0)
         main.controls.tab_index=main.controls.TABS.index('FX');main.controls.fx_page_index=self.index;main.controls.fx_param_indices[self.index]=0
         fx=main.dsp.fx.engine
         handle=fx.handle
@@ -131,8 +139,10 @@ class StardustChecks:
         if state['frames']==6:assert main.params.get('shimmer.type')==0
         if state['frames']==7:
             assert main.params.get('shimmer.type')==1
-            main.controls.fx_param_indices[self.index]=10
+            main.controls.fx_param_indices[self.index]=main.controls.current_fx_params.index('stardust.return')
             assert main.controls.current_param=='stardust.return'
+        if state['frames']==8:
+            main.controls.fx_param_indices[self.index]=main.controls.current_fx_params.index('stardust.lfo_depth')
     def after_draw(self,main,state):
         if state['frames'] in (1,2,6,7,8):
             import pygame

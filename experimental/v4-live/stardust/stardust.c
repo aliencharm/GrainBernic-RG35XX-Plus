@@ -13,7 +13,7 @@ typedef struct {
  float damp[8],damp2[8],delay[8],gain[8],norm[8],hp[2],early_lp[2][2],low_body[2],sub_body[2],harmonic_dc[2];
  float aa_coeff[4][5],aa_state[2][4][2];
  float diffuse[2][4][1024];int dpi[2][4],dlen[2][4];
- float ratio,bright,send,ret,input,pretime,depth;
+ float ratio,bright,send,ret,input,pretime,depth,grain_ms,lfo_depth,lfo_phase;
 } Stardust;
 static const float times[8]={.0297f,.0371f,.0411f,.0437f,.0533f,.0617f,.0713f,.0797f};
 static const float sl[8]={1,1,1,1,-1,-1,-1,-1};
@@ -45,13 +45,13 @@ void stardust_clear(void*handle){
  memset(s->diffuse,0,sizeof(s->diffuse));memset(s->dpi,0,sizeof(s->dpi));
  memset(s->early_lp,0,sizeof(s->early_lp));memset(s->low_body,0,sizeof(s->low_body));memset(s->sub_body,0,sizeof(s->sub_body));memset(s->harmonic_dc,0,sizeof(s->harmonic_dc));
  memset(s->damp,0,sizeof(s->damp));memset(s->hp,0,sizeof(s->hp));memset(s->damp2,0,sizeof(s->damp2));memset(s->aa_state,0,sizeof(s->aa_state));
- s->wi=s->prewi=0;cloud_clear(&s->cloud);s->ready=0;
+ s->wi=s->prewi=0;s->lfo_phase=0;cloud_clear(&s->cloud);s->ready=0;
 }
 void stardust_destroy(void*handle){Stardust*s=handle;if(s){free(s->fdn);free(s->pre);free(s->dry);free(s->cloud.history);free(s);}}
-/* p: predelay ms, size, decay, pitch st, brightness, freq Hz, depth, input, send, return */
+/* p: predelay ms, size, decay, pitch st, brightness, freq Hz, depth, input, send, return, grain ms, LFO Hz, LFO depth */
 int stardust_process(void*handle,const float*feed,float*audio,int frames,const float*p){
  Stardust*s=handle;if(!s||!feed||!audio||!p||frames<0)return -1;
- for(int i=0;i<10;i++)if(!isfinite(p[i]))return -2;
+ for(int i=0;i<13;i++)if(!isfinite(p[i]))return -2;
  /* Long diffuse bed plus a prominent stereo pitch return; no feedback gain boost. */
  float room=.2f+4.6f*clamp(p[1],0,1),rt=.25f+59.75f*powf(clamp(p[2],0,1),1.4f);
  float target_delay[8],target_gain[8],target_norm[8],mean_loss=0;
@@ -67,8 +67,10 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
  float fc=300.f*powf(60.f,clamp(p[4],0,1));fc=fminf(fc,.43f*s->sr);
  float bright=1.f-expf(-2*PI*fc/s->sr),alpha=1.f-expf(-1.f/(.02f*s->sr));
  /* Butterworth anti-aliasing is independent of the musical Brightness control. */
- float max_ratio=fmaxf(1,ratio*1.02f);
- for(int c=0;c<2;c++)for(int v=0;v<GC_VOICES;v++)max_ratio=fmaxf(max_ratio,s->cloud.grain[c][v].step);
+ float grain_ms=clamp(p[10],20,100),lfo_rate=clamp(p[11],.05f,5),lfo_depth=clamp(p[12],0,1);
+ float lfo_bound=1+.03f*fmaxf(lfo_depth,s->lfo_depth);
+ float max_ratio=fmaxf(1,ratio*1.02f*lfo_bound);
+ for(int c=0;c<2;c++)for(int v=0;v<GC_VOICES;v++)max_ratio=fmaxf(max_ratio,s->cloud.grain[c][v].step*lfo_bound);
  float omega=2*PI*.4f/max_ratio,cw=cosf(omega),sw=sinf(omega),aa_target[4][5];
  const float quality[4]={.50979558f,.60134489f,.89997622f,2.56291545f};
  for(int j=0;j<4;j++){
@@ -77,23 +79,29 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
   aa_target[j][3]=-2*cw*n;aa_target[j][4]=(1-a)*n;
  }
  float freq=clamp(p[5],.05f,5.f),depth=powf(clamp(p[6],0,1),1.5f)*.006f*s->sr;
- float motion_color=logf(freq/.05f)*.21714724f;
  float predelay=clamp(p[0],-1000,1000)*.001f*s->sr;
  float input=clamp(p[7],0,1),send=clamp(p[8],0,1),ret=clamp(p[9],0,1);
  float body=1-expf(-2*PI*400/s->sr),sub=1-expf(-2*PI*90/s->sr),dc=1-expf(-2*PI*20/s->sr);
  float dark=1-clamp(p[4],0,1);dark*=dark;
  if(!s->ready){
   for(int j=0;j<8;j++){s->delay[j]=target_delay[j];s->gain[j]=target_gain[j];s->norm[j]=target_norm[j];}
-  s->ratio=ratio;s->bright=bright;memcpy(s->aa_coeff,aa_target,sizeof(aa_target));s->pretime=predelay;s->input=input;s->send=send;s->ret=ret;s->depth=depth;s->ready=1;
+  s->ratio=ratio;s->bright=bright;memcpy(s->aa_coeff,aa_target,sizeof(aa_target));s->pretime=predelay;s->input=input;s->send=send;s->ret=ret;s->depth=depth;s->grain_ms=grain_ms;s->lfo_depth=lfo_depth;s->ready=1;
  }
  /* Skip redundant coefficient smoothing at steady Pitch; reserve work for actual changes. */
  int aa_moving=0;
  for(int j=0;j<4;j++)for(int k=0;k<5;k++)if(fabsf(aa_target[j][k]-s->aa_coeff[j][k])>1e-4f)aa_moving=1;
  if(!aa_moving)memcpy(s->aa_coeff,aa_target,sizeof(aa_target));
+ float grain_current=s->grain_ms,lfo_current=s->lfo_depth,lfo_phase=s->lfo_phase;
+ int grain_moving=fabsf(grain_current-grain_ms)>1e-4f;
+ int lfo_running=lfo_depth>1e-7f||lfo_current>1e-7f;
+ if(!grain_moving)grain_current=grain_ms;
+ if(!lfo_running)lfo_current=0;
  for(int n=0;n<frames;n++){
   s->ratio+=alpha*(ratio-s->ratio);s->bright+=alpha*(bright-s->bright);
   if(aa_moving)for(int j=0;j<4;j++)for(int k=0;k<5;k++)s->aa_coeff[j][k]+=alpha*(aa_target[j][k]-s->aa_coeff[j][k]);
   s->pretime+=alpha*(predelay-s->pretime);s->depth+=alpha*(depth-s->depth);
+  if(grain_moving)grain_current+=alpha*(grain_ms-grain_current);
+  if(lfo_running)lfo_current+=alpha*(lfo_depth-lfo_current);
   s->input+=alpha*(input-s->input);s->send+=alpha*(send-s->send);s->ret+=alpha*(ret-s->ret);
   float in[2]={clean(feed[2*n])*s->send,clean(feed[2*n+1])*s->send};
   for(int c=0;c<2;c++){s->pre[2*s->prewi+c]=in[c];s->dry[2*s->prewi+c]=clean(audio[2*n+c]);}
@@ -113,7 +121,16 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
    wet[0]+=z[j]*sl[j]*.35355339f;wet[1]+=z[j]*srn[j]*.35355339f;
   }
   float pitch_input[2],pitch_ratio[2],pitched[2];
-  float shift=clamp(fabsf(s->ratio-1)*8,0,1);
+  float shift=clamp(fmaxf(fabsf(s->ratio-1)*8,lfo_current),0,1);
+  float lfo_ratio=1;
+  if(lfo_running){
+   float phase=lfo_phase-.25f;if(phase<0)phase+=1;if(phase>=1)phase-=1;
+   float position=phase*1024;int index=(int)position;float fraction=position-index;
+   float wave=1-2*(s->cloud.window[index]+fraction*(s->cloud.window[index+1]-s->cloud.window[index]));
+   float x=.0288811325f*lfo_current*wave;
+   lfo_ratio=1+x+x*x*(.5f+x*(1.f/6.f));
+  }
+  if(lfo_running){lfo_phase+=lfo_rate/s->sr;if(lfo_phase>=1)lfo_phase-=1;}
   for(int c=0;c<2;c++){
    s->early_lp[c][0]=clean(s->early_lp[c][0]+s->bright*(in[c]-s->early_lp[c][0]));
    s->early_lp[c][1]=clean(s->early_lp[c][1]+s->bright*(s->early_lp[c][0]-s->early_lp[c][1]));
@@ -126,7 +143,7 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
    pitch_input[c]=value;
    pitch_ratio[c]=s->ratio*(1+(c? .0015f:-.0015f)*shift);
   }
-  cloud_tick(&s->cloud,pitch_input,pitched,pitch_ratio,s->depth/(.006f*s->sr),freq,clamp(p[1],0,1),motion_color);
+  cloud_tick(&s->cloud,pitch_input,pitched,pitch_ratio,s->depth/(.006f*s->sr),freq,grain_current,lfo_ratio);
   for(int c=0;c<2;c++){
    float v=clean(pitched[c]);s->hp[c]=clean(s->hp[c]+.0015f*(v-s->hp[c]));pitched[c]=v-s->hp[c];
   }
@@ -165,5 +182,6 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
   if(++s->wi==s->fdn_cap)s->wi=0;
   if(++s->prewi==s->pre_cap)s->prewi=0;
  }
+ s->grain_ms=grain_current;s->lfo_depth=lfo_current;s->lfo_phase=lfo_phase;
  return 0;
 }
