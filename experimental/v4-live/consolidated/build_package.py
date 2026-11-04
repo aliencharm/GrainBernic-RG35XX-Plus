@@ -28,6 +28,7 @@ files={f'GrainBrick V{launcher_version}.sh':root/'GrainBrick V4.sh',
        'grainbrick-v4/v4_projects.py':root/'v4_projects.py',
        'grainbrick-v4/v4_shimmer.py':root/'v4_shimmer.py',
        'grainbrick-v4/v4_live_latency.py':root/'v4_live_latency.py',
+       'grainbrick-v4/v4_live_recovery.py':root/'v4_live_recovery.py',
        'grainbrick-v4/libgrainbrick_stardust.so':root.parent/'stardust/libgrainbrick_stardust.so',
        'grainbrick-v4/v4_waveform.py':root/'v4_waveform.py',
        'grainbrick-v4/v4_themes.py':root/'v4_themes.py',
@@ -60,7 +61,7 @@ manifest={'version':VERSION,'kind':'standalone','original_main_sha256':EXPECTED_
           'release_name':args.release_name or f'GrainBrick V{VERSION}','consolidates':'V4.1.10',
           'packaging':'Runtime only; NumPy tests, compiler tools, headers and typing stubs omitted',
           'audio_baseline':baseline,'sha256':{name:hashlib.sha256(path.read_bytes()).hexdigest() for name,path in files.items()}}
-manifest['audio_overrides']={'v4_live_latency.py':'LIVE output buffer 1024 frames; 512-frame DSP block/capture/SAMPLE retained','stage_mix.py':'Separate sample FX/Tape blends default to original 100%; LIVE blends unchanged','live_source.py':'SAMPLE dry playback; bounded LIVE stale-input recovery with smoothed joins and queue counters; frozen export retained','record_monitor.py':'Output-only 10 ms monitor startup fade; saved recordings unchanged','v4_shimmer.py':'Optional Original/Stardust shimmer selection; native reverb retained','libgrainbrick_stardust.so':'Independent C stereo feedback-network pitch-shifting shimmer'}
+manifest['audio_overrides']={'v4_live_recovery.py':'App-level Settings opt-in for LIVE input catch-up; default OFF and shared with running capture','v4_live_latency.py':'LIVE output buffer 1024 frames; 512-frame DSP block/capture/SAMPLE retained','stage_mix.py':'Separate sample FX/Tape blends default to original 100%; LIVE blends unchanged','live_source.py':'SAMPLE dry playback; bounded LIVE stale-input recovery with smoothed joins and queue counters; frozen export retained','record_monitor.py':'Output-only 10 ms monitor startup fade; saved recordings unchanged','v4_shimmer.py':'Optional Original/Stardust shimmer selection; native reverb retained','libgrainbrick_stardust.so':'Independent C stereo feedback-network pitch-shifting shimmer'}
 manifest['immutable_paths']=[name for name in files if name.startswith('grainbrick-v4/') and not name.startswith(('grainbrick-v4/samples/','grainbrick-v4/projects/'))]
 release=args.output or root.parent/f'releases/GrainBrick_V{VERSION}_Standalone.zip'
 release.parent.mkdir(parents=True,exist_ok=True)

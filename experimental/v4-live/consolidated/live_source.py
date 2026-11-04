@@ -35,6 +35,7 @@ class ArecordCapture:
             stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,bufsize=0,preexec_fn=parent_death_signal)
         os.set_blocking(self.process.stdout.fileno(),False)
         self.rate=rate;self.skipped_frames=0;self.resync_count=0;self.queue_peak_frames=0
+        self.recovery_enabled=False
         self._queued_bytes=array.array('i',[0]);self._last_sample=None
     def read(self,frames):
         if frames<=0:raise ValueError('Live capture requires a positive frame count')
@@ -44,7 +45,8 @@ class ArecordCapture:
         skipped=0
         # A stalled render/output must not leave LIVE permanently reading old input.
         # Snapshot a bounded discard amount; normal one/two-block queues stay intact.
-        if queued>=frames*4*3:
+        recovery=bool(getattr(self.recovery_enabled,'value',self.recovery_enabled))
+        if recovery and queued>=frames*4*3:
             stale=((queued-frames*4)//4)*4
             while skipped<stale:
                 chunk=os.read(fd,min(65536,stale-skipped))

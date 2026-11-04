@@ -26,13 +26,17 @@ class StardustDSP:
         self.handle=lib.stardust_create(rate)
         if not self.handle:raise RuntimeError('Unable to allocate Stardust')
         self.values=np.zeros(len(NATIVE_PARAMS),np.float32)
+        self._values_pointer=ctypes.cast(self.values.ctypes.data,ptr)
     def process(self,feed,audio,parameters):
         if feed.dtype!=np.float32 or audio.dtype!=np.float32 or feed.shape!=audio.shape or feed.ndim!=2 or feed.shape[1]!=2 or not feed.flags.c_contiguous or not audio.flags.c_contiguous:
             raise ValueError('Stardust requires matching contiguous float32 stereo blocks')
         if not len(audio):return audio
         for index,key in enumerate(NATIVE_PARAMS):self.values[index]=parameters.get(key)
         pointer=ctypes.POINTER(ctypes.c_float)
-        result=self.library.stardust_process(self.handle,feed.ctypes.data_as(pointer),audio.ctypes.data_as(pointer),len(audio),self.values.ctypes.data_as(pointer))
+        # data_as() creates cyclic ctypes owner dictionaries per block. The arrays
+        # remain strongly referenced throughout this synchronous native call, so
+        # address-only pointers avoid that deferred garbage-collection work.
+        result=self.library.stardust_process(self.handle,ctypes.cast(feed.ctypes.data,pointer),ctypes.cast(audio.ctypes.data,pointer),len(audio),self._values_pointer)
         if result:raise ValueError('Invalid Stardust parameters')
         return audio
     def clear(self):self.library.stardust_clear(self.handle)

@@ -29,6 +29,19 @@ class StardustTests(unittest.TestCase):
             feed=signal[start:start+512];audio=feed.copy()
             output[start:start+512]=engine.process(feed,audio,p)
         return output
+    def test_processing_does_not_accumulate_cyclic_pointer_garbage(self):
+        import gc
+        engine=StardustDSP(48000,self.library);self.addCleanup(engine.close)
+        feed=np.zeros((512,2),np.float32);audio=feed.copy();params=Params()
+        for _ in range(4):engine.process(feed,audio,params)
+        gc.collect();enabled=gc.isenabled();gc.disable()
+        try:
+            before=len(gc.get_objects())
+            for _ in range(128):engine.process(feed,audio,params)
+            self.assertLess(len(gc.get_objects())-before,32)
+        finally:
+            if enabled:gc.enable()
+
     def test_silence_and_dry_passthrough(self):
         e=StardustDSP(48000,self.library);self.addCleanup(e.close)
         p=Params(**{'stardust.input':1,'stardust.send':0,'stardust.return':0})

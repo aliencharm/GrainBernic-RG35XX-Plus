@@ -12,6 +12,7 @@ class CaptureQueueTests(unittest.TestCase):
         read_fd,write_fd=os.pipe()
         process=types.SimpleNamespace(stdout=os.fdopen(read_fd,'rb',buffering=0),poll=lambda:None)
         with patch('live_source.subprocess.Popen',return_value=process):capture=ArecordCapture('test')
+        capture.recovery_enabled=True
         self.addCleanup(process.stdout.close);self.addCleanup(os.close,write_fd)
         return capture,write_fd
     def block(self,value,frames=128):return np.full((frames,2),value,dtype='<i2').tobytes()
@@ -68,3 +69,19 @@ class CaptureQueueTests(unittest.TestCase):
         with patch('live_source.os.read',return_value=b''):
             with patch('live_source.select.select',return_value=([capture.process.stdout],[],[])):
                 with self.assertRaisesRegex(OSError,'stream ended'):capture.read(128)
+
+    def test_disabled_recovery_preserves_oldest_input_even_with_backlog(self):
+        capture,writer=self.capture();capture.recovery_enabled=False
+        for value in (100,200,300,400):os.write(writer,self.block(value))
+        for value in (100,200,300,400):
+            np.testing.assert_array_equal(capture.read(128),np.full((128,2),value/32768,np.float32))
+        self.assertEqual(capture.resync_count,0);self.assertEqual(capture.skipped_frames,0)
+
+    def test_shared_switch_applies_to_an_existing_capture_without_restart(self):
+        from multiprocessing import RawValue
+        capture,writer=self.capture();flag=RawValue('b',0);capture.recovery_enabled=flag
+        for value in (100,200,300,400):os.write(writer,self.block(value))
+        capture.read(128);self.assertEqual(capture.resync_count,0)
+        flag.value=1;audio=capture.read(128)
+        self.assertAlmostEqual(float(audio[-1,0]),400/32768,places=6)
+        self.assertEqual(capture.skipped_frames,256)

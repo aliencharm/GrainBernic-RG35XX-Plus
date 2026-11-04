@@ -32,6 +32,7 @@ class TapeFrames:
 class Themes:
     def __init__(self,app,main,controller):
         self.app=Path(app);self.main=main;self.controller=controller
+        self.recovery=getattr(controller,'recovery_settings',None)
         try:data=json.loads((self.app/'config.json').read_text())
         except (OSError,ValueError):data={}
         selected=data.get('ui_theme','AMBER')
@@ -96,10 +97,18 @@ class Themes:
             controls=main.controls;cls=type(controls)
             rows=list(cls.SETTINGS_PARAMS)
             if 'settings.theme' not in rows:rows.insert(3,'settings.theme')
+            if self.recovery is not None and 'settings.live_recovery' not in rows:
+                rows.insert(rows.index('settings.theme')+1,'settings.live_recovery')
             cls.SETTINGS_PARAMS=rows
             self.apply()
             original=cls.handle
             def handle(ctrl,action,value):
+                if ctrl.current_tab=='SETTINGS' and ctrl.current_param=='settings.live_recovery' and action in ('A','B'):
+                    if value!=0:
+                        try:self.recovery.set_enabled(action=='A')
+                        except (OSError,ValueError) as exc:
+                            print('LIVE INPUT RECOVERY SAVE FAILED:',str(exc),flush=True)
+                    return
                 if ctrl.current_tab=='SETTINGS' and ctrl.current_param=='settings.theme' and action in ('A','B'):
                     if value!=0:
                         try:self.cycle(1 if action=='A' else -1)
@@ -115,16 +124,25 @@ class Themes:
             # Retain original language/output/save controls and their consumption.
             selected=controls.current_param
             theme_selected=selected=='settings.theme'
-            if theme_selected:
+            recovery_selected=selected=='settings.live_recovery'
+            if theme_selected or recovery_selected:
                 index=controls.settings_param_index;controls.settings_param_index=0
             try:result=original_settings(ui,controls)
             finally:
-                if theme_selected:controls.settings_param_index=index
+                if theme_selected or recovery_selected:controls.settings_param_index=index
             if theme_selected:
                 pygame.draw.rect(ui.screen,ui.BG,(35,105,960,195))
                 ui.text('THEME',55,123,4,ui.ACCENT)
                 ui.text('CHANGES INTERFACE COLORS.',55,197,3,ui.WHITE,letter_spacing=2)
                 ui.text('A / B SELECT  -  SAVED AUTOMATICALLY',55,233,2,ui.DIM)
+            if recovery_selected:
+                pygame.draw.rect(ui.screen,ui.BG,(35,105,960,275))
+                ui.text('LIVE RECOVERY',55,123,4,ui.ACCENT)
+                ui.text('ON: SKIPS OLD INPUT TO CATCH UP AFTER A STALL.',55,197,2,ui.WHITE)
+                ui.text('MAY ALTER A NOTE OR A DAW RECORDING.',55,227,2,ui.WHITE)
+                ui.text('OFF: NO RECOVERY SKIPS; DELAY MAY BUILD.',55,257,2,ui.DIM)
+                ui.text('A ON / B OFF  -  SAVED AUTOMATICALLY',55,287,2,ui.DIM)
+                ui.text('SETTINGS',55,340,4,ui.ACCENT)
             pygame.draw.rect(ui.screen,ui.BG,(35,380,960,312))
             rows=[('settings.info_language','INFO LANGUAGE',ui.info_language),
                   ('settings.save_params_on_exit','SAVE PARAMS ON EXIT','ON' if ui.save_params_on_exit else 'OFF'),
@@ -132,8 +150,10 @@ class Themes:
                   ('settings.theme','THEME',self.name),
                   ('settings.button_mapping','BUTTON MAPPING','>'),
                   ('settings.reset_sound_params','RESET SOUND PARAMS','>')]
+            if self.recovery is not None:
+                rows.insert(4,('settings.live_recovery','LIVE RECOVERY','ON' if self.recovery.enabled else 'OFF'))
             for i,(key,label,value) in enumerate(rows):
-                y=390+i*48;color=ui.ACCENT if key==selected else ui.WHITE
+                y=390+i*(42 if self.recovery is not None else 48);color=ui.ACCENT if key==selected else ui.WHITE
                 if key==selected:ui.text('>',35,y,3,color)
                 ui.text(label,65,y,3,color);ui.text(value,483,y,3,color)
             return result
