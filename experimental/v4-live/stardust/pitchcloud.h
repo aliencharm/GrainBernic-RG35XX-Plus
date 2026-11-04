@@ -4,7 +4,7 @@ typedef struct {float position,age,length,step,age_step;} CloudGrain;
 typedef struct {
  float *history;int capacity,write,rate,ready;
  CloudGrain grain[2][GC_VOICES];
- float window[1025],wander[2],from[2],target[2],motion;
+ float window[1025],wander[2],from[2],target[2],motion,color;
  unsigned random,motion_random;
 } PitchCloud;
 static float cloud_random(unsigned*s){unsigned x=*s;x^=x<<13;x^=x>>17;x^=x<<5;*s=x;return (x>>8)*(1.f/16777216.f);}
@@ -21,15 +21,16 @@ static void cloud_clear(PitchCloud*p){
 static void cloud_spawn(PitchCloud*p,int c,int voice,float ratio,float texture,float size,float age){
  CloudGrain*g=&p->grain[c][voice];
  float random=cloud_random(&p->random);
- g->length=p->rate*(.025f+.055f*size)*(.8f+.4f*random)*(1-.55f*texture);
+ g->length=p->rate*(.040f+.070f*size)*(.9f+.2f*random)*(1-.4f*texture)*(1+.08f*texture*p->wander[c])*(1+texture*(.25f-.5f*p->color));
  g->age_step=1/g->length;
- float detune=texture*(.004f*p->wander[c]+.004f*(2*cloud_random(&p->random)-1));
+ float detune=texture*(.004f*p->wander[c]+.003f*(2*cloud_random(&p->random)-1));
  g->step=ratio*(1+detune);g->age=age;
- float delay=p->rate*(.003f+.001f*c+texture*.010f*cloud_random(&p->random));
+ float delay=p->rate*(.003f+.001f*c+texture*(.006f*cloud_random(&p->random)+.002f*(p->wander[c]+1)));
  delay+=fmaxf(0,g->step-1)*(g->length-1)-(g->step-1)*age*g->length;
  g->position=p->write-delay;while(g->position<0)g->position+=p->capacity;while(g->position>=p->capacity)g->position-=p->capacity;
 }
-static void cloud_tick(PitchCloud*p,const float input[2],float output[2],const float ratio[2],float texture,float speed,float size){
+static void cloud_tick(PitchCloud*p,const float input[2],float output[2],const float ratio[2],float texture,float speed,float size,float color){
+ p->color=color;
  p->motion+=speed/p->rate;
  if(p->motion>=1||!p->ready){
   p->motion-=floorf(p->motion);

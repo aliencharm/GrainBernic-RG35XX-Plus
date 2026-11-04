@@ -311,6 +311,31 @@ class StardustTests(unittest.TestCase):
         self.assertGreater(energies[6000],1e-5)
         self.assertLess(energies[18000],energies[6000]*.02)
 
+    def test_frequency_changes_texture_cadence_without_a_sine_lfo(self):
+        time=np.arange(48000*12)/48000
+        signal=np.repeat((.2*np.sin(time*2*np.pi*220)).astype(np.float32)[:,None],2,axis=1)
+        widths={};outputs={}
+        for frequency in (.05,5):
+            out=self.render_signal(signal,**{'stardust.input':0,'stardust.return':1,'stardust.predelay':0,'stardust.pitch':12,'stardust.depth':1,'stardust.frequency':frequency,'stardust.size':.5,'stardust.decay':.8})[192000:]
+            outputs[frequency]=out
+            power=np.sum(abs(np.fft.rfft(out*np.hanning(len(out))[:,None],axis=0))**2,axis=1)
+            bins=np.fft.rfftfreq(len(out),1/48000);band=(bins>360)&(bins<520)
+            widths[frequency]=float(np.sqrt(np.sum(power[band]*(bins[band]-440)**2)/np.sum(power[band])))
+        self.assertGreater(widths[5],widths[.05]*1.2)
+        difference=float(np.sqrt(np.mean((outputs[5]-outputs[.05])**2)))
+        self.assertGreater(difference,float(np.sqrt(np.mean(outputs[.05]**2)))*.3)
+
+    def test_dark_downward_shift_has_body_and_retains_the_bass_note(self):
+        time=np.arange(48000*12)/48000
+        signal=np.repeat((.15*np.sin(time*2*np.pi*110)).astype(np.float32)[:,None],2,axis=1)
+        out=self.render_signal(signal,**{'stardust.input':0,'stardust.return':1,'stardust.predelay':0,'stardust.pitch':-12,'stardust.brightness':0,'stardust.depth':.25,'stardust.frequency':.5,'stardust.size':.5,'stardust.decay':.8})[192000:]
+        power=np.sum(abs(np.fft.rfft(out*np.hanning(len(out))[:,None],axis=0))**2,axis=1)
+        bins=np.fft.rfftfreq(len(out),1/48000);bass=float(np.sum(power[(bins>25)&(bins<85)]));body=float(np.sum(power[(bins>95)&(bins<350)]))
+        self.assertGreater(body,bass*.1)
+        self.assertLess(body,bass*.5)
+        band=(bins>35)&(bins<85);peak=float(bins[band][np.argmax(power[band])])
+        self.assertLess(abs(peak-55),12)
+
     def test_choice_keeps_original_path_and_only_processes_selected_engine(self):
         class FX:sample_rate=48000
         fx=FX();choice=ShimmerChoice(fx);p=Params(**{'shimmer.mix':.8,'reverb.mix':.7})

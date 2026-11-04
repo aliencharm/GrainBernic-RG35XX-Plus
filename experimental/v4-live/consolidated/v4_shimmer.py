@@ -158,8 +158,8 @@ def install(main):
         'stardust.decay':'Controls how long the shimmer tail lingers.',
         'stardust.pitch':'Pitch movement recirculated inside Stardust.',
         'stardust.brightness':'Warm pitched body at low values; open airy shimmer at high.',
-        'stardust.frequency':'Speed of the irregular grain movement.',
-        'stardust.depth':'Grain texture, scattering and subtle detuning in the tail.',
+        'stardust.frequency':'Speed and cadence of grain scattering.',
+        'stardust.depth':'Texture intensity: smooth at low values, grainier above.',
         'stardust.input':'Level of the dry signal.',
         'stardust.send':'Level feeding the Stardust network.',
         'stardust.return':'Wet shimmer level, from subtle to prominent.'}

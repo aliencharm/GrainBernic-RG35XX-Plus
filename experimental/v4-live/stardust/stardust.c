@@ -10,7 +10,7 @@ typedef struct {
  int sr,fdn_cap,pre_cap,wi,prewi,ready;
  float *fdn,*pre,*dry;
  PitchCloud cloud;
- float damp[8],damp2[8],delay[8],gain[8],norm[8],hp[2],early_lp[2][2],low_body[2];
+ float damp[8],damp2[8],delay[8],gain[8],norm[8],hp[2],early_lp[2][2],low_body[2],sub_body[2],harmonic_dc[2];
  float aa_coeff[4][5],aa_state[2][4][2];
  float diffuse[2][4][1024];int dpi[2][4],dlen[2][4];
  float ratio,bright,send,ret,input,pretime,depth;
@@ -43,7 +43,7 @@ void stardust_clear(void*handle){
  Stardust*s=handle;if(!s)return;
  memset(s->fdn,0,8*s->fdn_cap*sizeof(float));memset(s->pre,0,2*s->pre_cap*sizeof(float));memset(s->dry,0,2*s->pre_cap*sizeof(float));
  memset(s->diffuse,0,sizeof(s->diffuse));memset(s->dpi,0,sizeof(s->dpi));
- memset(s->early_lp,0,sizeof(s->early_lp));memset(s->low_body,0,sizeof(s->low_body));
+ memset(s->early_lp,0,sizeof(s->early_lp));memset(s->low_body,0,sizeof(s->low_body));memset(s->sub_body,0,sizeof(s->sub_body));memset(s->harmonic_dc,0,sizeof(s->harmonic_dc));
  memset(s->damp,0,sizeof(s->damp));memset(s->hp,0,sizeof(s->hp));memset(s->damp2,0,sizeof(s->damp2));memset(s->aa_state,0,sizeof(s->aa_state));
  s->wi=s->prewi=0;cloud_clear(&s->cloud);s->ready=0;
 }
@@ -77,16 +77,22 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
   aa_target[j][3]=-2*cw*n;aa_target[j][4]=(1-a)*n;
  }
  float freq=clamp(p[5],.05f,5.f),depth=powf(clamp(p[6],0,1),1.5f)*.006f*s->sr;
+ float motion_color=logf(freq/.05f)*.21714724f;
  float predelay=clamp(p[0],-1000,1000)*.001f*s->sr;
  float input=clamp(p[7],0,1),send=clamp(p[8],0,1),ret=clamp(p[9],0,1);
- float body=1-expf(-2*PI*400/s->sr),dark=1-clamp(p[4],0,1);dark*=dark;
+ float body=1-expf(-2*PI*400/s->sr),sub=1-expf(-2*PI*90/s->sr),dc=1-expf(-2*PI*20/s->sr);
+ float dark=1-clamp(p[4],0,1);dark*=dark;
  if(!s->ready){
   for(int j=0;j<8;j++){s->delay[j]=target_delay[j];s->gain[j]=target_gain[j];s->norm[j]=target_norm[j];}
   s->ratio=ratio;s->bright=bright;memcpy(s->aa_coeff,aa_target,sizeof(aa_target));s->pretime=predelay;s->input=input;s->send=send;s->ret=ret;s->depth=depth;s->ready=1;
  }
+ /* Skip redundant coefficient smoothing at steady Pitch; reserve work for actual changes. */
+ int aa_moving=0;
+ for(int j=0;j<4;j++)for(int k=0;k<5;k++)if(fabsf(aa_target[j][k]-s->aa_coeff[j][k])>1e-4f)aa_moving=1;
+ if(!aa_moving)memcpy(s->aa_coeff,aa_target,sizeof(aa_target));
  for(int n=0;n<frames;n++){
   s->ratio+=alpha*(ratio-s->ratio);s->bright+=alpha*(bright-s->bright);
-  for(int j=0;j<4;j++)for(int k=0;k<5;k++)s->aa_coeff[j][k]+=alpha*(aa_target[j][k]-s->aa_coeff[j][k]);
+  if(aa_moving)for(int j=0;j<4;j++)for(int k=0;k<5;k++)s->aa_coeff[j][k]+=alpha*(aa_target[j][k]-s->aa_coeff[j][k]);
   s->pretime+=alpha*(predelay-s->pretime);s->depth+=alpha*(depth-s->depth);
   s->input+=alpha*(input-s->input);s->send+=alpha*(send-s->send);s->ret+=alpha*(ret-s->ret);
   float in[2]={clean(feed[2*n])*s->send,clean(feed[2*n+1])*s->send};
@@ -120,7 +126,7 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
    pitch_input[c]=value;
    pitch_ratio[c]=s->ratio*(1+(c? .0015f:-.0015f)*shift);
   }
-  cloud_tick(&s->cloud,pitch_input,pitched,pitch_ratio,s->depth/(.006f*s->sr),freq,clamp(p[1],0,1));
+  cloud_tick(&s->cloud,pitch_input,pitched,pitch_ratio,s->depth/(.006f*s->sr),freq,clamp(p[1],0,1),motion_color);
   for(int c=0;c<2;c++){
    float v=clean(pitched[c]);s->hp[c]=clean(s->hp[c]+.0015f*(v-s->hp[c]));pitched[c]=v-s->hp[c];
   }
@@ -132,13 +138,21 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
    float v=injected+s->gain[j]*(base+.44f*(shifted-projection));
    s->fdn[j*s->fdn_cap+s->wi]=clean(v);
   }
+  float down=clamp((1-s->ratio)*2,0,1);
   for(int c=0;c<2;c++){
    float dry=read2(s->dry,s->pre_cap,s->prewi,fmaxf(0,-s->pretime),c);
    /* The audible return is chiefly pitched, independent of the loop's loss budget.
       Near zero transposition, retain the unshifted output without doubling it. */
    float cloud=(wet[c]+.3f*s->early_lp[c][1])*(1-.8f*shift)+pitched[c]*(1.959592f*shift);
    s->low_body[c]+=body*(cloud-s->low_body[c]);
-   cloud=cloud*(1-.4f*dark)+s->low_body[c]*dark;
+   float definition=0,low=s->low_body[c];
+   if(down>0&&dark>0){
+    s->sub_body[c]+=sub*(cloud-s->sub_body[c]);
+    float harmonic=fabsf(low);s->harmonic_dc[c]+=dc*(harmonic-s->harmonic_dc[c]);
+    low-=down*s->sub_body[c];definition=.5f*dark*down*(harmonic-s->harmonic_dc[c]);
+   }else{s->sub_body[c]=0;s->harmonic_dc[c]=0;}
+   /* Dark downward shifts keep low-mid definition, instead of boosting mostly sub-bass. */
+   cloud=cloud*(1-.4f*dark)+low*dark+definition;
    /* Normalize the projected network return to a usable wet level. */
    float v=dry*s->input+2.f*cloud*s->ret;
    /* Smooth headroom at strong wet settings; Return zero retains exact dry bypass. */
