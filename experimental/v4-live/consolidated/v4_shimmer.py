@@ -158,7 +158,7 @@ def install(main):
         'shimmer.type':'Choose Original or Stardust shimmer.',
         'stardust.predelay':'Positive delays the effect send; negative delays the dry signal.',
         'stardust.size':'Reverb dimensions only; grain duration is independent.',
-        'stardust.decay':'Controls how long the shimmer tail lingers.',
+        'stardust.decay':'Tail duration; the upper range reaches longer decay.',
         'stardust.pitch':'Pitch movement recirculated inside Stardust.',
         'stardust.brightness':'Warm pitched body at low values; open airy shimmer at high.',
         'stardust.frequency':'How quickly irregular grain movement evolves.',

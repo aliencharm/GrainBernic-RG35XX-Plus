@@ -53,7 +53,9 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
  Stardust*s=handle;if(!s||!feed||!audio||!p||frames<0)return -1;
  for(int i=0;i<13;i++)if(!isfinite(p[i]))return -2;
  /* Long diffuse bed plus a prominent stereo pitch return; no feedback gain boost. */
- float room=.2f+4.6f*clamp(p[1],0,1),rt=.25f+59.75f*powf(clamp(p[2],0,1),1.4f);
+ float size=clamp(p[1],0,1),decay=clamp(p[2],0,1);
+ /* Extend the upper Decay range, retaining fine control over shorter tails. */
+ float room=.2f+4.6f*size,rt=.25f+59.75f*powf(decay,1.4f)+60.f*decay*decay*decay*decay;
  float target_delay[8],target_gain[8],target_norm[8],mean_loss=0;
  for(int j=0;j<8;j++){
   target_delay[j]=times[j]*s->sr*room;target_gain[j]=powf(.001f,times[j]*room/rt);
@@ -127,7 +129,7 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
    float phase=lfo_phase-.25f;if(phase<0)phase+=1;if(phase>=1)phase-=1;
    float position=phase*1024;int index=(int)position;float fraction=position-index;
    float wave=1-2*(s->cloud.window[index]+fraction*(s->cloud.window[index+1]-s->cloud.window[index]));
-   float x=.0288811325f*lfo_current*wave;
+   float x=.0144405663f*lfo_current*wave;
    lfo_ratio=1+x+x*x*(.5f+x*(1.f/6.f));
   }
   if(lfo_running){lfo_phase+=lfo_rate/s->sr;if(lfo_phase>=1)lfo_phase-=1;}
@@ -155,9 +157,8 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
    float v=injected+s->gain[j]*(base+.44f*(shifted-projection));
    s->fdn[j*s->fdn_cap+s->wi]=clean(v);
   }
-  float down=clamp((1-s->ratio)*2,0,1);
+  float down=clamp((1-s->ratio)*2,0,1),cloud_out[2];
   for(int c=0;c<2;c++){
-   float dry=read2(s->dry,s->pre_cap,s->prewi,fmaxf(0,-s->pretime),c);
    /* The audible return is chiefly pitched, independent of the loop's loss budget.
       Near zero transposition, retain the unshifted output without doubling it. */
    float cloud=(wet[c]+.3f*s->early_lp[c][1])*(1-.8f*shift)+pitched[c]*(1.959592f*shift);
@@ -169,9 +170,16 @@ int stardust_process(void*handle,const float*feed,float*audio,int frames,const f
     low-=down*s->sub_body[c];definition=.5f*dark*down*(harmonic-s->harmonic_dc[c]);
    }else{s->sub_body[c]=0;s->harmonic_dc[c]=0;}
    /* Dark downward shifts keep low-mid definition, instead of boosting mostly sub-bass. */
-   cloud=cloud*(1-.4f*dark)+low*dark+definition;
+   cloud_out[c]=cloud*(1-.4f*dark)+low*dark+definition;
+  }
+  /* Expand only the wet stereo side, progressively at high Size and Return.
+     The mono sum and feedback remain unchanged; no extra delay or grain voices. */
+  float side=(cloud_out[0]-cloud_out[1])*.15f*size*size*s->ret*s->ret;
+  cloud_out[0]+=side;cloud_out[1]-=side;
+  for(int c=0;c<2;c++){
+   float dry=read2(s->dry,s->pre_cap,s->prewi,fmaxf(0,-s->pretime),c);
    /* Normalize the projected network return to a usable wet level. */
-   float v=dry*s->input+2.f*cloud*s->ret;
+   float v=dry*s->input+2.f*cloud_out[c]*s->ret;
    /* Smooth headroom at strong wet settings; Return zero retains exact dry bypass. */
    if(s->ret>1e-6f&&fabsf(v)>.9f){
     float excess=fabsf(v)-.9f,limited=copysignf(.9f+.08f*excess/(.08f+excess),v);
