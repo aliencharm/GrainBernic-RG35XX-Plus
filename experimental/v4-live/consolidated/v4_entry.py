@@ -23,7 +23,7 @@ def main():
         for path in locks:
             lock=stack.enter_context(path.open('a'))
             fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-        print('GRAINBRICK V4.2.13:',str(app),flush=True)
+        print('GRAINBRICK V4.2.14:',str(app),flush=True)
         prepare(app)
         config=device_config(app/'config.json')
         if 'V4_USB_NOT_CONNECTED' not in config['capture']:
@@ -43,6 +43,8 @@ def main():
             state['installed']=True
             from original_adapter import install_at_boot
             state['controller']=install_at_boot(original,config)
+            from v4_live_latency import install as install_live_latency
+            install_live_latency(state['controller'])
             original._v4_controller=state['controller']
             if router is not None:router.install(original,state['controller'])
             from v4_waveform import install as install_waveform
