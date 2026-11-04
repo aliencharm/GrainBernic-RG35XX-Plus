@@ -157,9 +157,9 @@ def install(main):
         'stardust.size':'Adjusts the size of the Stardust feedback network.',
         'stardust.decay':'Controls how long the shimmer tail lingers.',
         'stardust.pitch':'Pitch movement recirculated inside Stardust.',
-        'stardust.brightness':'Darkens or brightens the circulating tail.',
-        'stardust.frequency':'Speed of the gentle shimmer pitch drift.',
-        'stardust.depth':'Fine drift below halfway; stronger movement toward full.',
+        'stardust.brightness':'Warm pitched body at low values; open airy shimmer at high.',
+        'stardust.frequency':'Speed of the irregular grain movement.',
+        'stardust.depth':'Grain texture, scattering and subtle detuning in the tail.',
         'stardust.input':'Level of the dry signal.',
         'stardust.send':'Level feeding the Stardust network.',
         'stardust.return':'Wet shimmer level, from subtle to prominent.'}

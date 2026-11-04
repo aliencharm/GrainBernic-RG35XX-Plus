@@ -70,6 +70,32 @@ class StardustChecks:
         fx.process(np.zeros_like(audio),reader)
         assert fx._v4_shimmer_choice.mode==0
         print('PASS actual AudioWorker shared parameter reader selects Stardust/Original',flush=True)
+        saved={k:main.params.get(k) for k in main.params.params}
+        source=main.dsp._v4_live_source
+        class Capture:
+            def __init__(self):self.frame=0
+            def read(self,n):
+                time=(np.arange(n)+self.frame)/48000.;self.frame+=n
+                return np.repeat((.1*np.sin(time*2*np.pi*220)).astype(np.float32)[:,None],2,axis=1)
+            def close(self):pass
+        try:
+            for key,value in {'transport.playing':1,'live.enabled':1,'live.mix':0,'live.fx_mix':1,'live.tape_mix':1,'shimmer.type':1,'stardust.predelay':0,'stardust.send':1,'stardust.depth':0,'stardust.pitch':12,'tape.enabled':0,'orbix.enabled':0,'delay.mix':0,'reverb.mix':0,'shimmer.mix':0}.items():
+                if key in main.params.params:main.params.set(key,value)
+            levels={}
+            for input_level,return_level in ((1,0),(0,0),(0,1)):
+                main.params.set('stardust.input',input_level);main.params.set('stardust.return',return_level)
+                main.dsp.fx.engine.reset();source.close();source.capture=Capture()
+                rendered=[main.dsp.render(512).copy() for _ in range(200)]
+                levels[input_level,return_level]=float(np.sqrt(np.mean(np.stack(rendered[-64:])**2)))
+            print('FULL LIVE SHIMMER INPUT/RETURN RMS',levels,flush=True)
+            assert levels[1,0]>.01,levels
+            assert levels[0,0]<1e-7,levels
+            assert levels[0,1]>.01,levels
+        finally:
+            source.close()
+            for key,value in saved.items():main.params.set(key,value)
+            main.dsp.fx.engine.reset()
+        print('PASS full original LIVE chain: INPUT/RETURN zero silences, dry-only and wet-only routing work at FX MIX 100%',flush=True)
         import pygame
         mapping=json.loads((self.app/'gb_buttons.json').read_text())['buttons']
         menu=next(int(k) for k,v in mapping.items() if v==14)

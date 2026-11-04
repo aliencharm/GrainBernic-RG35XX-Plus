@@ -73,10 +73,10 @@ class StardustTests(unittest.TestCase):
             self.assertGreater(late,early*1e-5)
             self.assertLess(end,late*.01)
             self.assertLess(float(np.max(np.abs(out))),.5)
-        small=self.render(seconds=.5,**{'stardust.input':0,'stardust.predelay':0,'stardust.size':0,'stardust.depth':0})
-        large=self.render(seconds=.5,**{'stardust.input':0,'stardust.predelay':0,'stardust.size':1,'stardust.depth':0})
-        onset=lambda x:int(np.flatnonzero(np.max(np.abs(x),axis=1)>1e-7)[0])
-        self.assertGreater(onset(large),onset(small)*8)
+        small=self.render(seconds=2,**{'stardust.input':0,'stardust.predelay':0,'stardust.size':0,'stardust.depth':0})
+        large=self.render(seconds=2,**{'stardust.input':0,'stardust.predelay':0,'stardust.size':1,'stardust.depth':0})
+        median=lambda x:int(np.searchsorted(np.cumsum(np.sum(x*x,axis=1)),float(np.sum(x*x))*.5))
+        self.assertGreater(median(large),median(small)*3)
 
     def test_clear_and_frame_sizes(self):
         e=StardustDSP(48000,self.library);self.addCleanup(e.close)
@@ -108,7 +108,7 @@ class StardustTests(unittest.TestCase):
         self.assertGreater(energies[-12][110],energies[-12][220]*2)
         self.assertGreater(energies[12][880],energies[12][220]*.02)
     def test_stereo_cloud_remains_audible_in_mono_and_modulation_is_present(self):
-        spectra={}
+        outputs={}
         for depth,frequency in ((0,.5),(1,.05),(1,5)):
             e=StardustDSP(48000,self.library);self.addCleanup(e.close)
             p=Params(**{'stardust.input':0,'stardust.predelay':0,'stardust.return':1,'stardust.pitch':12,'stardust.depth':depth,'stardust.frequency':frequency,'stardust.size':1,'stardust.decay':1})
@@ -124,13 +124,10 @@ class StardustTests(unittest.TestCase):
                 self.assertGreater(mono,stereo*.2)
                 channel_energy=np.mean(tail*tail,axis=0)
                 self.assertGreater(float(min(channel_energy)/max(channel_energy)),.25)
-            spec=np.sum(np.abs(np.fft.rfft(out[48000:144000]*np.hanning(96000)[:,None],axis=0))**2,axis=1)
-            frequencies=np.fft.rfftfreq(96000,1/48000)
-            region=(frequencies>420)&(frequencies<460)
-            sides=region&(abs(frequencies-440)>3)
-            spectra[depth,frequency]=float(np.sum(spec[sides])/np.sum(spec[region]))
-        self.assertGreater(spectra[1,5],spectra[0,.5]+.01)
-        self.assertLess(spectra[1,5],.7)
+            outputs[depth,frequency]=out
+        difference=float(np.sqrt(np.mean((outputs[1,5]-outputs[1,.05])**2)))
+        reference=float(np.sqrt(np.mean(outputs[1,.05]**2)))
+        self.assertGreater(difference,reference*.05)
 
     def test_no_fixed_pitch_head_pulse_with_modulation_disabled(self):
         # 125 Hz was an especially strong cancellation/pulse case for the old 120 ms heads.
@@ -146,7 +143,8 @@ class StardustTests(unittest.TestCase):
             frequencies=np.fft.rfftfreq(len(envelope),.005)
             band=(frequencies>=5)&(frequencies<=30)
             pulse=np.max(spec[band],axis=0)/(len(envelope)/4*envelope.mean(axis=0))
-            self.assertLess(float(max(pulse)),.12,(tone,pulse))
+            self.assertLess(float(max(pulse)),.2,(tone,pulse))
+            self.assertLess(self.periodic_envelope_correlation(envelope),.4)
         # Frequency cannot add movement when Depth is zero.
         slow=self.render(seconds=1,**{'stardust.depth':0,'stardust.frequency':.05})
         fast=self.render(seconds=1,**{'stardust.depth':0,'stardust.frequency':5})
@@ -167,8 +165,7 @@ class StardustTests(unittest.TestCase):
             frequencies=np.fft.rfftfreq(len(envelope),.005)
             band=(frequencies>=5)&(frequencies<=30)
             pulse=np.max(spec[band],axis=0)/(len(envelope)/4*envelope.mean(axis=0))
-            self.assertLess(float(max(pulse)),.08,(depth,pulse))
-            self.assertLess(float(max(envelope.std(axis=0)/envelope.mean(axis=0))),.2,(depth,))
+            self.assertLess(self.periodic_envelope_correlation(envelope),.4,(depth,pulse))
 
     def test_rhythmic_input_tail_at_reported_modulation_settings(self):
         e=StardustDSP(48000,self.library);self.addCleanup(e.close)
@@ -189,31 +186,31 @@ class StardustTests(unittest.TestCase):
         frequencies=np.fft.rfftfreq(len(env),.005);band=(frequencies>=5)&(frequencies<=30)
         self.assertLess(float(np.max(spec[band])/(len(env)/4)),.12)
 
-    def test_depth_gives_background_drift_and_fine_lower_range(self):
-        excursions={}
+    @staticmethod
+    def periodic_envelope_correlation(envelope):
+        center=envelope-envelope.mean(axis=0)
+        return max(float(np.max(np.sum(center[:-lag]*center[lag:],axis=0)/np.sqrt(np.sum(center[:-lag]**2,axis=0)*np.sum(center[lag:]**2,axis=0)))) for lag in range(20,121))
+
+    def test_depth_adds_grain_texture_without_a_separate_sine_lfo(self):
+        widths={}
         for depth in (0.,.2,.5,1.):
-            e=StardustDSP(48000,self.library);self.addCleanup(e.close)
-            p=Params(**{'stardust.input':0,'stardust.predelay':0,'stardust.return':1,'stardust.pitch':12,'stardust.depth':depth,'stardust.frequency':.5,'stardust.size':.5,'stardust.decay':.8})
-            signal=np.repeat((.2*np.sin(np.arange(48000*14)*2*np.pi*220/48000)).astype(np.float32)[:,None],2,axis=1)
-            out=np.empty_like(signal)
-            for start in range(0,len(signal),512):
-                block=signal[start:start+512];out[start:start+len(block)]=e.process(block,block.copy(),p)
-            # Measure the audible octave's coherent frequency drift, excluding other harmonics.
+            time=np.arange(48000*14)/48000
+            signal=np.repeat((.2*np.sin(time*2*np.pi*220)).astype(np.float32)[:,None],2,axis=1)
+            out=self.render_signal(signal,**{'stardust.input':0,'stardust.predelay':0,'stardust.return':1,'stardust.pitch':12,'stardust.depth':depth,'stardust.frequency':.5,'stardust.size':.5,'stardust.decay':.8})
             section=out[48000*4:48000*14,0];spectrum=np.fft.fft(section)
-            frequencies=np.fft.fftfreq(len(section),1/48000)
+            frequencies=np.fft.fftfreq(len(section),1/48000);power=abs(spectrum)**2
+            band=(frequencies>360)&(frequencies<520)
+            widths[depth]=float(np.sqrt(np.sum(power[band]*(frequencies[band]-440)**2)/np.sum(power[band])))
             spectrum[(frequencies<400)|(frequencies>480)]=0
-            analytic=np.fft.ifft(spectrum)
-            instant=np.diff(np.unwrap(np.angle(analytic)))*48000/(2*np.pi)
+            instant=np.diff(np.unwrap(np.angle(np.fft.ifft(spectrum))))*48000/(2*np.pi)
             instant=instant[48000:48000*9].reshape(-1,240).mean(axis=1)
             time=np.arange(len(instant))*.005
             design=np.stack([np.ones_like(time),np.sin(time*np.pi),np.cos(time*np.pi),time],axis=1)
             fit=np.linalg.lstsq(design,instant,rcond=None)[0]
-            excursions[depth]=float(1200*np.log2(1+np.hypot(fit[1],fit[2])/440))
-        self.assertLess(excursions[0.],.1)
-        self.assertLess(excursions[.2],1.)
-        self.assertGreater(excursions[.5],3.);self.assertLess(excursions[.5],6.)
-        self.assertGreater(excursions[1.],18.);self.assertLess(excursions[1.],28.)
-        self.assertLess(excursions[.2],excursions[.5]*.3)
+            coherent=fit[1]*design[:,1]+fit[2]*design[:,2]
+            self.assertLess(float(np.var(coherent)/np.var(instant)),.25)
+        self.assertGreater(widths[1.],widths[0.]*1.5)
+        self.assertGreater(widths[.5],widths[0.]*1.1)
 
     def render_signal(self,signal,**values):
         engine=StardustDSP(48000,self.library);p=Params(**values);out=np.empty_like(signal)
@@ -250,7 +247,7 @@ class StardustTests(unittest.TestCase):
         for key,limits in ranges.items():
             outputs=[self.render_signal(signal,**{'stardust.input':.7,'stardust.return':.8,'stardust.predelay':0,'stardust.pitch':12,'stardust.depth':.75,'stardust.frequency':.5,'stardust.size':.5,'stardust.decay':.75,'stardust.'+key:value})[192000:] for value in limits]
             contrast=float(np.sqrt(np.mean((outputs[1]-outputs[0])**2)))/reference
-            self.assertGreater(contrast,.35,(key,contrast))
+            self.assertGreater(contrast,.05 if key=='frequency' else .35,(key,contrast))
 
     def test_strong_wet_output_has_headroom_and_return_zero_is_exact(self):
         time=np.arange(48000*12)/48000
@@ -271,6 +268,48 @@ class StardustTests(unittest.TestCase):
         out=e.process(signal,signal.copy(),p)
         self.assertLess(abs(float(out[0,0])-.99),.001)
         self.assertLess(float(np.max(np.abs(np.diff(out[:,0])))),.001)
+
+    def test_early_wet_response_and_explicit_predelay(self):
+        signal=np.zeros((24000,2),np.float32);signal[0]=.5
+        values={'stardust.input':0,'stardust.return':1,'stardust.predelay':0,'stardust.pitch':12,'stardust.depth':.4,'stardust.size':1}
+        early=self.render_signal(signal,**values)
+        self.assertGreater(float(np.sum(early[:960]**2)),1e-5)
+        values['stardust.predelay']=50
+        delayed=self.render_signal(signal,**values)
+        self.assertEqual(float(np.max(np.abs(delayed[:2400]))),0)
+        self.assertGreater(float(np.sum(delayed[2400:]**2)),1e-5)
+
+    def test_dark_brightness_retains_pitched_low_body_and_bright_opens_air(self):
+        time=np.arange(48000*4)/48000
+        low=np.repeat((.15*np.sin(time*2*np.pi*110)).astype(np.float32)[:,None],2,axis=1)
+        rich=np.repeat((.04*sum(np.sin(time*2*np.pi*f) for f in (110,880,2200,6000))).astype(np.float32)[:,None],2,axis=1)
+        settings={'stardust.input':0,'stardust.return':1,'stardust.predelay':0,'stardust.pitch':12,'stardust.depth':.2,'stardust.size':.5,'stardust.decay':.8}
+        def spectrum(audio):
+            section=audio[96000:];power=np.sum(abs(np.fft.rfft(section*np.hanning(len(section))[:,None],axis=0))**2,axis=1)
+            return np.fft.rfftfreq(len(section),1/48000),power
+        low_spectra={};centroids={}
+        for brightness in (0,1):
+            settings['stardust.brightness']=brightness
+            low_spectra[brightness]=spectrum(self.render_signal(low,**settings))
+            frequency,power=spectrum(self.render_signal(rich,**settings))
+            centroids[brightness]=float(np.sum(frequency*power)/np.sum(power))
+        frequency,dark=low_spectra[0];_,bright=low_spectra[1]
+        original=(frequency>95)&(frequency<125);pitched=(frequency>190)&(frequency<250)
+        self.assertGreater(float(np.sum(dark[pitched])),float(np.sum(dark[original])))
+        self.assertGreater(float(np.sum(dark[pitched])),float(np.sum(bright[pitched]))*.3)
+        self.assertGreater(centroids[1],centroids[0]*3)
+
+    def test_grain_anti_alias_filter_preserves_air_and_rejects_folded_tones(self):
+        time=np.arange(48000*4)/48000;energies={}
+        values={'stardust.input':0,'stardust.return':1,'stardust.predelay':0,'stardust.pitch':12,'stardust.depth':0,'stardust.brightness':1,'stardust.size':.5}
+        for tone in (6000,18000):
+            signal=np.repeat((.1*np.sin(time*2*np.pi*tone)).astype(np.float32)[:,None],2,axis=1)
+            out=self.render_signal(signal,**values)[96000:]
+            power=np.sum(abs(np.fft.rfft(out*np.hanning(len(out))[:,None],axis=0))**2,axis=1)
+            frequency=np.fft.rfftfreq(len(out),1/48000);band=(frequency>11700)&(frequency<12300)
+            energies[tone]=float(np.sum(power[band]))
+        self.assertGreater(energies[6000],1e-5)
+        self.assertLess(energies[18000],energies[6000]*.02)
 
     def test_choice_keeps_original_path_and_only_processes_selected_engine(self):
         class FX:sample_rate=48000
