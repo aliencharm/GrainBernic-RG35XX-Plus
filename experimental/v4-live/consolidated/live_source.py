@@ -1,11 +1,14 @@
 """Source adapter for the ORIGINAL GranularEngine and DSPChain; no replacement FX."""
 import ctypes
+import array
+import fcntl
 import os
 import select
 import signal
 import subprocess
 import time
 import types
+import termios
 import weakref
 from pathlib import Path
 import numpy as np
@@ -31,7 +34,23 @@ class ArecordCapture:
         self.process=subprocess.Popen(['arecord','-q','-D',pcm,'-t','raw','-f','S16_LE','-r',str(rate),'-c','2','--buffer-time='+str(latency_us),'--period-time='+str(max(1000,latency_us//4))],
             stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,bufsize=0,preexec_fn=parent_death_signal)
         os.set_blocking(self.process.stdout.fileno(),False)
+        self.rate=rate;self.skipped_frames=0;self.resync_count=0;self.queue_peak_frames=0
+        self._queued_bytes=array.array('i',[0]);self._last_sample=None
     def read(self,frames):
+        if frames<=0:raise ValueError('Live capture requires a positive frame count')
+        fd=self.process.stdout.fileno()
+        fcntl.ioctl(fd,termios.FIONREAD,self._queued_bytes,True)
+        queued=self._queued_bytes[0];self.queue_peak_frames=max(self.queue_peak_frames,queued//4)
+        skipped=0
+        # A stalled render/output must not leave LIVE permanently reading old input.
+        # Snapshot a bounded discard amount; normal one/two-block queues stay intact.
+        if queued>=frames*4*3:
+            stale=((queued-frames*4)//4)*4
+            while skipped<stale:
+                chunk=os.read(fd,min(65536,stale-skipped))
+                if not chunk:raise OSError('Live capture stream ended during resync')
+                skipped+=len(chunk)
+            self.skipped_frames+=skipped//4;self.resync_count+=1
         required=frames*4; data=bytearray();deadline=time.monotonic()+2.
         while len(data)<required:
             if self.process.poll() is not None:raise OSError('Live capture exited: '+str(self.process.returncode))
@@ -42,7 +61,13 @@ class ArecordCapture:
             chunk=os.read(self.process.stdout.fileno(),required-len(data))
             if not chunk:raise OSError('Live capture stream ended')
             data.extend(chunk)
-        return np.frombuffer(data,dtype='<i2').reshape(frames,2).astype(np.float32)*(1./32768.)
+        audio=np.frombuffer(data,dtype='<i2').reshape(frames,2).astype(np.float32)*(1./32768.)
+        if skipped and self._last_sample is not None:
+            count=min(frames,max(1,int(self.rate*.003)))
+            ramp=np.linspace(0.,1.,count,dtype=np.float32)[:,None]
+            audio[:count]=self._last_sample+(audio[:count]-self._last_sample)*ramp
+        self._last_sample=audio[-1].copy()
+        return audio
     def close(self):
         process=self.process
         if process.poll() is None:
@@ -184,6 +209,9 @@ class SwitchableSource:
                   (self.processed,float(np.max(np.abs(dry))),float(np.max(np.abs(wet))),mix,
                    self.parameters.get('grain.size'),self.parameters.get('grain.density'),self.parameters.get('grain.pitch'),self.parameters.get('live.freeze')>=.5,
                    self.parameters.get('live.fx_mix'),self.parameters.get('live.tape_mix')),flush=True)
+            if hasattr(self.capture,'resync_count'):
+                print('LIVE CAPTURE QUEUE peak_frames=%d resyncs=%d skipped_frames=%d' %
+                      (self.capture.queue_peak_frames,self.capture.resync_count,self.capture.skipped_frames),flush=True)
         return (dry*(1.-mix)+wet*mix).astype(np.float32,copy=False)
     def frozen_snapshot(self):
         if not self.enabled() or self.parameters.get('live.freeze')<.5:
